@@ -32,6 +32,7 @@ refactor: true
 <!-- Get normal posts on current page -->
 
 {% assign normal_size = paginator.posts | size | minus: pinned_size %}
+{% assign normal_size = 0 %} <!-- disable cards for unpinned posts on the home page.-->
 
 {% if normal_size > 0 %}
   {% if pinned_size > 0 %}
@@ -118,6 +119,22 @@ refactor: true
   {% endfor %}
 </div>
 <!-- #post-list -->
+
+
+
+<div id="index">
+  <h1>REP Index</H1>
+  {% assign sortedPosts = site.posts | sort: 'REP' %}
+  {% for post in sortedPosts %}
+    {% unless forloop.first %}</ul>{% endunless %}
+
+    <li>
+      <a href="{{ post.url | relative_url }}">REP-{{ post.REP }}: {{ post.title }}</a>
+    </li>
+
+    {% if forloop.last %}</ul>{% endif %}
+  {% endfor %}
+</div>
 
 {% if paginator.total_pages > 1 %}
   {% include post-paginator.html %}
