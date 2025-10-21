@@ -129,7 +129,12 @@ refactor: true
     {% unless forloop.first %}</ul>{% endunless %}
 
     <li>
-      <a href="{{ post.url | relative_url }}">REP-{{ post.REP }}: {{ post.title }}</a>
+      <a href="{{ post.url | relative_url }}">REP-{{ post.REP }}: {{ post.title }}
+      {% for tag_name in post.tags %}
+        {% assign url = tag_name | slugify | url_encode | prepend: '/tags/' | append: '/' %}
+        <a class="post-tag btn btn-outline-primary" href="{{ url | relative_url }}">{{ tag_name }}</a>
+      {% endfor %}
+      </a>
     </li>
 
     {% if forloop.last %}</ul>{% endif %}
