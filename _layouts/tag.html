@@ -15,6 +15,17 @@ layout: page
       <li class="d-flex justify-content-between px-md-3">
         <a href="{{ post.url | relative_url }}">REP-{{ post.REP }}: {{ post.title }}</a>
         <span class="dash flex-grow-1"></span>
+        <!-- categories -->
+        {% if post.categories.size > 0 %}
+          <span class="categories">
+            {% for category in post.categories %}
+              {% assign url = category | slugify | url_encode | prepend: '/categories/' | append: '/' %}
+              <a class="post-tag btn btn-outline-primary" href="{{ url | relative_url }}"
+                ><i class="fas fa-folder-open fa-fw"></i> {{ category }}
+              </a>
+            {% endfor %}
+          </span>
+        {% endif %}
         {% include datetime.html date=post.date class='text-muted small text-nowrap' lang=lang %}
       </li>
     {% endfor %}
