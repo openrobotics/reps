@@ -21,6 +21,102 @@ script_includes:
     {% endif %}
 
     <div class="post-meta text-muted">
+      <!-- REP header -->
+      <hr>
+      <table>
+      <!-- REP number -->
+        <tr>
+          <td><em>REP</em></td>
+          <td>{{ page.REP }}</td>
+        </tr>
+      <!-- Title -->
+        <tr>
+          <td><em>Title</em></td>
+          <td>{{ page.title }}</td>
+        </tr>
+      <!-- Author(s) -->
+        <tr>
+          {% if page.Author %}
+            {% assign authors = page.Author %}
+          {% elsif page.Authors %}
+            {% assign authors = page.Authors %}
+          {% endif %}
+          <td><em>Author</em></td>
+          <td>{{ authors }}</td>
+        </tr>
+      <!-- PMC Sponsor -->
+        {% if page.PMC-Sponsor %}
+        <tr>
+          <td><em>PMC Sponsor</em></td>
+          <td>{{ page.PMC-Sponsor }}</td>
+        </tr>
+        {% endif %}
+      <!-- PMCs -->
+        {% if page.PMCs %}
+        <tr>
+          <td><em>PMCs</em></td>
+          <td>{{ page.PMCs }}</td>
+        </tr>
+        {% endif %}
+      <!-- Discussion links -->
+        {% if page.Discussion %}
+        <tr>
+          <td><em>Discussion</em></td>
+          <td>{{ page.Discussion }}</td>
+        </tr>
+        {% endif %}
+      <!-- Status -->
+        <tr>
+          <td><em>Status</em></td>
+          <td>{{ page.Status }}</td>
+        </tr>
+      <!-- Type -->
+        <tr>
+          <td><em>Type</em></td>
+          <td>{{ page.Type }}</td>
+        </tr>
+      <!-- Requires -->
+        {% if page.Requires %}
+        <tr>
+          <td><em>Requires</em></td>
+          <td>{{ page.Requires }}</td>
+        </tr>
+        {% endif %}
+      <!-- Created date -->
+        <tr>
+          <td><em>Created</em></td>
+          <td>{{ page.Created }}</td>
+        </tr>
+      <!-- Supersedes -->
+        {% if page.Supersedes %}
+        <tr>
+          <td><em>Supersedes</em></td>
+          <td>{{ page.Supersedes }}</td>
+        </tr>
+        {% endif %}
+      <!-- Superseded by -->
+        {% if page.Superseded-By %}
+        <tr>
+          <td><em>Superseded by</em></td>
+          <td>{{ page.Superseded-By }}</td>
+        </tr>
+        {% endif %}
+      <!-- Resolution link -->
+        {% if page.Resolution %}
+        <tr>
+          <td><em>Resolution</em></td>
+          <td>{{ page.Resolution }}</td>
+        </tr>
+        {% endif %}
+      <!-- Resolution date -->
+        {% if page.Resolution-Date %}
+        <tr>
+          <td><em>Resolution date</em></td>
+          <td>{{ page.Resolution-Date }}</td>
+        </tr>
+        {% endif %}
+      </table>
+      <hr>
       <!-- published date -->
       <span>
         {{ site.data.locales[lang].post.posted }}

@@ -2,6 +2,7 @@
 layout: default
 refactor: true
 ---
+
 {% include lang.html %}
 
 {% assign all_pinned = site.posts | where: 'pin', 'true' %}
@@ -82,7 +83,7 @@ refactor: true
             </h1>
 
             <div class="card-text content mt-0 mb-3">
-              <p>{% include post-description.html %}</p>
+              <p>{% include post-summary.html %}</p>
             </div>
 
             <div class="post-meta flex-grow-1 d-flex align-items-end">
@@ -119,8 +120,6 @@ refactor: true
   {% endfor %}
 </div>
 <!-- #post-list -->
-
-
 
 <div id="index">
   <h1>REP Index</H1>
