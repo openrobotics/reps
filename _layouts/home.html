@@ -101,6 +101,14 @@ refactor: true
                     {% endfor %}
                   </span>
                 {% endif %}
+                {% if post.tags.size > 0 %}
+                  <i class="fas fa-gears fa-fw"></i>
+                  <span class="tags">
+                    {% for tag_name in post.tags %}
+                      {{ tag_name }}
+                    {% endfor %}
+                  </span>
+                {% endif %}
               </div>
 
               {% if post.pin %}
@@ -132,7 +140,7 @@ refactor: true
       <a href="{{ post.url | relative_url }}">REP-{{ post.REP }}: {{ post.title }}
       {% for tag_name in post.tags %}
         {% assign url = tag_name | slugify | url_encode | prepend: '/tags/' | append: '/' %}
-        <a class="post-tag btn btn-outline-primary" href="{{ url | relative_url }}">{{ tag_name }}</a>
+        <a class="post-tag btn btn-outline-primary" href="{{ url | relative_url }}"><i class="fas fa-gears fa-fw"></i> {{ tag_name }}</a>
       {% endfor %}
       </a>
     </li>
