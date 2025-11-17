@@ -16,7 +16,7 @@ A specification of the REP numbering system can be [found in REP-0001-2025](http
 
 # REP Template
 
-A template REP sumbission can be found in [REP-0004-2025 Sample Markdown REP Template](https://github.com/openrobotics/reps/blob/main/_posts/rep-0004%3A2025.md
+A template REP sumbission can be found in [REP-0004-2025 Sample Markdown REP Template.](https://github.com/openrobotics/reps/blob/main/_posts/rep-0004%3A2025.md)
 
 # Building Locally
 
