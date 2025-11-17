@@ -39,7 +39,7 @@ social:
   email: info@openrobotics.org # change to your email address
   links:
     # The first element serves as the copyright owner's link
-    - https://github.com/openrobotics # change to your GitHub homepage
+    - https://github.com/openrobotics/reps
     - https://twitter.com/openroboticsorg # change to your Twitter homepage
     #- https://mastodon.online/@openrobotics
     #- https://bsky.app/profile/openrobotics.bsky.social

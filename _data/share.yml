@@ -6,9 +6,9 @@ platforms:
     icon: "fab fa-linkedin"
     link: "https://www.linkedin.com/company/open-source-robotics-foundation"
 
-  # - type: Weibo
-  #   icon: "fab fa-weibo"
-  #   link: "https://service.weibo.com/share/share.php?title=TITLE&url=URL"
+  - type: Github
+    icon: "fab fa-github"
+    link: "https://github.com/openrobotics/reps"
 
   - type: Mastodon
     icon: "fa-brands fa-mastodon"
