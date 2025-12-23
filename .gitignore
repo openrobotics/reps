@@ -8,6 +8,9 @@ Gemfile.lock
 .jekyll-metadata
 _site
 
+# Ruby LSP
+.ruby-lsp
+
 # RubyGems
 *.gem
 

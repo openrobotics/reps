@@ -1,10 +1,10 @@
 # Robotics Enhancement Proposals Official Source
 
-This repository is the offical source of the Robotics Enhancement Proposals (REP) of the Open Source Robotics Alliance Technical Governance Committee.
+This repository is the official source of the Robotics Enhancement Proposals (REP) of the Open Source Robotics Alliance Technical Governance Committee.
 
 # REP submission process
 
-On October 23rd, 2025 the [Open Source Robotics Alliance (OSRA)](https://osralliance.org/) Technical Governance Comittee (TGC) launched our new REP process.
+On October 23rd, 2025 the [Open Source Robotics Alliance (OSRA)](https://osralliance.org/) Technical Governance Committee (TGC) launched our new REP process.
 Details on how to submit new REPs can be found in [REP-0001:2025](https://reps.openrobotics.org/rep-0001-2025/).
 Additional details can be found in our [announcement on ROS Discourse](https://discourse.openrobotics.org/t/launch-of-the-osras-new-robotics-enhancement-proposal-rep-process/50668).
 The REP review process is significantly different from most conventional source code repositoires. **We recommend you read REP-0001:2025 in its entirety before [submitting a pull request.]((https://reps.openrobotics.org/rep-0001-2025/))**.
@@ -19,7 +19,7 @@ A specification of the REP numbering system can be [found in REP-0001:2025](http
 
 # REP template
 
-A template REP sumbission can be found in [REP-0004:2025 - Sample Markdown REP Template](https://github.com/openrobotics/reps/blob/main/_posts/rep-0004%3A2025.md).
+A template REP submission can be found in [REP-0004:2025 - Sample Markdown REP Template](https://github.com/openrobotics/reps/blob/main/_posts/rep-0004%3A2025.md).
 
 # Building locally
 
