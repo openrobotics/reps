@@ -50,14 +50,14 @@ This REP introduces a new top-level command group `ros2 log` with the following 
 
 ### Command Overview
 
-| Subcommand | Description |
-|------------|-------------|
-| `ros2 log list` | List nodes that support runtime log configuration |
-| `ros2 log levels` | Show all valid log level values |
-| `ros2 log get <node>` | Retrieve the current log levels of a node |
-| `ros2 log set <node> <level>` | Set the log level of a node |
-| `ros2 log watch [options]` | Monitor and display logs in real-time |
-| `ros2 log describe <node>` | Display logger metadata for a node |
+| Subcommand                    | Description                                       |
+| ----------------------------- | ------------------------------------------------- |
+| `ros2 log list`               | List nodes that support runtime log configuration |
+| `ros2 log levels`             | Show all valid log level values                   |
+| `ros2 log get <node>`         | Retrieve the current log levels of a node         |
+| `ros2 log set <node> <level>` | Set the log level of a node                       |
+| `ros2 log watch [options]`    | Monitor and display logs in real-time             |
+| `ros2 log describe <node>`    | Display logger metadata for a node                |
 
 ### Detailed Command Specifications
 
@@ -243,10 +243,13 @@ This command provides filtering capabilities to display only relevant log messag
 ros2 log watch [options]
 ```
 
-**Options:**
+**Options:**(T.B.D)
 - `--level <level>`: Show only logs at or above the specified severity level
 - `--logger <logger_name>`: Filter logs by logger name
 - `--regex <pattern>`: Filter log messages matching the specified regular expression pattern
+- `--no-color`: Disable colorized output (default: false)
+- `--no-timestamp`: Disable timestamp (default: false)
+- `--function-detail`: Output function name, file, and line number (default: false)
 
 **Examples:**
 
