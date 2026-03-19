@@ -1,8 +1,8 @@
-# REP 2040 -- OpenUSD Conventions for Simulation Asset Interoperability
+# REP XXXX -- OpenUSD Conventions for Simulation Asset Interoperability
 
 | Field | Value |
 | :--- | :--- |
-| **REP** | 2040 |
+| **REP** | XXXX |
 | **Title** | OpenUSD Conventions for Simulation Asset Interoperability |
 | **Author** | Adam Dabrowski, Mateusz Zak (Robotec.ai) |
 | **Status** | Draft |
