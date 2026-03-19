@@ -15,7 +15,7 @@
 
 This REP defines a standard schema and strict profile of OpenUSD (Universal Scene Description) for the interchange of robotics simulation assets. The scope includes robots, sensors, static environments (e.g., warehouse racks), and dynamic props. This REP aims to ensure that a single asset functions consistently across:
 
-1.  **Simulation and physics engines** (Gazebo, Isaac Sim, MuJoCo, O3DE).
+1.  **Simulation and physics engines** (Gazebo, Isaac Sim, Genesis, MuJoCo, O3DE).
 2.  **Runtime integrations** (ROS 2 Interfaces).
 3.  **Converters and web visualization** (especially glTF 2.0 conversion).
 
