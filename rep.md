@@ -19,7 +19,7 @@ This REP defines a standard schema and strict profile of OpenUSD (Universal Scen
 2.  **Runtime integrations** (ROS 2 Interfaces).
 3.  **Converters and web visualization** (especially glTF 2.0 conversion).
 
-To achieve this, the specification is divided into three distinct logical areas:
+To achieve this, the specification is concerned with three areas:
 *   **Section 1** ratifies existing upstream standards and recommendations (AOUSD, ASWF, NVIDIA) to establish a baseline for correct simulation assets.
 *   **Section 2** defines novel, declarative API schemas for ROS 2 interfaces to ensure engine-agnostic runtime behavior.
 *   **Section 3** defines a strict interoperability profile to support export pathways to other formats, ensuring compatibility with standards like glTF 2.0.
