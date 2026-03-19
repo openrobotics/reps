@@ -200,10 +200,10 @@ Repetitive geometry (bolts, LED arrays on a sensor) should be marked `instanceab
 Lighting assemblies must use standard `UsdLux` schemas. Emissive meshes (geometry acting as light sources) should be avoided for primary illumination due to poor scaling in real-time engines.
 
 ### 3.5 Variant Baking for Export
-While USD natively handles structural variants (changing meshes or physics dynamically), web visualizers typically do not. Converters targeting formats like glTF 2.0 should "bake" the active structural and physical variant into static geometry during export. Material variants should be preserved and mapped to the `KHR_materials_variants` glTF extension.
+While USD natively handles structural variants, many of the simulation tools in the ecosystem don't. Converters targeting formats like glTF 2.0 should "bake" the active structural and physical variant into static geometry during export. Material variants should be preserved and mapped to the `KHR_materials_variants` glTF extension.
 
 ### 3.6 Conversion and Round-Tripping
-OpenUSD supports a superset of features compared to standard robotics formats (URDF, SDF) and web formats (glTF). Consequently, conversions between OpenUSD and these formats are generally **destructive (lossy)**. Perfect bi-directional round-tripping is not required by this REP. Importers and exporters should prioritize preserving kinematics, physics constraints, and ROS API schemas, while accepting the loss of USD-native composition features (like layers) during conversion.
+OpenUSD supports a superset of features compared to standard robotics formats (URDF, SDF) and web formats (glTF). Consequently, conversions between OpenUSD and these formats are generally **destructive (lossy)**. Importers and exporters should prioritize preserving kinematics, physics constraints, and ROS API schemas, while accepting the loss of USD-native composition features (like layers) during conversion.
 
 ---
 
