@@ -89,7 +89,7 @@ OpenUSD allows flexible naming, but ROS 2 has strict lexical rules. Prim names i
 
 #### 1.3.1 Collisions & The Dual-Fidelity Pattern
 Collision geometries must explicitly specify `purpose="guide"` and `physics:approximation="none"`. To ensure assets function across both standard physics engines and advanced contact-rich solvers (e.g., Newton), assets should employ a "Dual-Fidelity Pattern" utilizing a `collision_fidelity` OpenUSD `VariantSet`:
-1.  **Baseline Approximation (Default Variant):** The default variant must contain "convexHull" or primitive shapes. When the authored mesh is already mathematically convex, assets should apply `CollisionComplianceAPI` with `isAuthoredConvex=true` to allow engines to skip hull recomputation.
+1.  **Baseline Approximation (Default Variant):** The default variant must contain "convexHull" or primitive shapes.
 2.  **Advanced Approximation (Optional Variant):** A secondary variant may contain high-fidelity concave trimeshes intended for Signed Distance Field (SDF) or Hydroelastic collision generation, provided the target simulator supports these paradigms.
 
 ---
