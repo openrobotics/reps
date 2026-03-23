@@ -89,12 +89,12 @@ To guarantee that simulation assets remain self-contained, portable, and predict
     *   Payloads must not gate joint or link prims themselves. The kinematic topology (Prims bearing `PhysicsRigidBodyAPI`, `PhysicsJoint` schemas, and `Ros2*API` schemas) must reside in the primarily loaded scene graph (e.g., via Local authoring or standard References). 
     *   The Payload should solely encapsulate the nested geometric and material data. This enables ROS parsers and web converters to traverse the lightweight kinematic tree efficiently without loading heavy buffers.
 
-#### 1.2.4 Variants and Reusability
+#### 1.2.4 Variants
 OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., encapsulating multiple furniture styles, different robot end-effectors, or optional sensor suites within a single asset).
 *   **Default Variant Fallback:** Any asset utilizing `VariantSets` must author a default variant selection. This ensures that if the asset is loaded by a simulator or CI/CD pipeline without explicit variant overrides, it resolves to a valid, predictable physical and visual state.
 *   **ROS Interface Resolution:** A change in a variant selection may add or remove Prims containing `Ros2*API` schemas (e.g., swapping a generic robot head for a sensor-equipped head). Simulators and tooling must only evaluate and spawn ROS interfaces that are active within the currently resolved variant state of the stage.
 
-#### 1.2.5 Asset Management & FileFormat Plugins
+#### 1.2.5 Asset Management
 *   **Path Resolution:** Internal references must use relative paths (`./geo/mesh.usdc`). For distributed, highly interoperable assets, all file dependencies should be self-contained and rely exclusively on relative paths.
 *   **ROS packages:** External dependencies to other ROS packages must use the package:// URI scheme, and should be contained in ROS-specific .usd files in the ETL pipeline. Asset authors must be aware that resolving these URIs requires the host simulator or tool to implement a custom OpenUSD ArResolver plugin. Absolute paths and proprietary schemes (e.g., omniverse://) are strictly prohibited in distributed assets.
 *   **Native Composition vs. Custom Prefabs:** The use of custom or vendor-specific string attributes (e.g., `custom string my_sim:prefabPath = "robot.usd"`) to dynamically load, instantiate, or compose assets at runtime is strictly prohibited for interoperable assets. Asset composition must rely purely on native OpenUSD references or payloads.
@@ -108,8 +108,7 @@ OpenUSD's native instancing mechanisms are designed for repetitive visual and st
 *    **Canonical Assets:** Authors must distribute a single, self-contained canonical environment.
 *    **Runtime Delegation:** Simulators supporting massive parallelism are expected to handle environment replication natively at runtime via their own APIs. Authors must not bake thousands of physics-enabled clones into the source file.
 
-### 1.3 Physics & Kinematics
-
+### 1.3 Physics
 *   **Rigid Body Hierarchy:** Assets should utilize Logical Nesting to represent kinematic chains (e.g., `Forearm` is a child of `UpperArm`). This preserves the Scene Graph for TF tree generation and ensures compatibility with parsers expecting URDF/SDF-like topologies (e.g., MuJoCo).
     *  Simulators that require flat hierarchies are responsible for flattening the graph at import time. The asset itself must remain logically nested.
 *   **Joint Placement:** While `UsdPhysicsJoint` prims rely on relational targeting (`body0` and `body1`) rather than hierarchy, asset authors should place the Joint prim as a sibling adjacent to the child link it connects, within the scope of the parent link. This ensures self-contained modularity.
@@ -125,12 +124,12 @@ OpenUSD's native instancing mechanisms are designed for repetitive visual and st
     * *Dummy Frames:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `Ros2FrameAPI` as defined in Section 2.8.
 *   **Inertia Representation:** Unlike URDF and SDFormat's 6-value symmetric matrix, OpenUSD requires an eigendecomposed inertia tensor. Converters must mathematically decompose the source matrix into physics:diagonalInertia (eigenvalues) and physics:principalAxes (quaternion). This native decomposed form is the strict single source of truth; custom 6-value array attributes must not be authored or parsed.
 
-#### 1.3.1 Collisions & The Dual-Fidelity Pattern
+#### 1.3.1 Collisions
 Collision geometries should explicitly specify `purpose="guide"` and `physics:approximation="none"`. To ensure assets function across both standard physics engines and advanced contact-rich solvers (e.g., Newton), assets should employ a "Dual-Fidelity Pattern" utilizing a `collision_fidelity` OpenUSD `VariantSet`:
 1.  **Baseline Approximation (Default Variant):** The default variant must contain "convexHull" or primitive shapes.
 2.  **Advanced Approximation (Optional Variant):** A secondary variant may contain high-fidelity concave trimeshes intended for Signed Distance Field (SDF) or Hydroelastic collision generation, provided the target simulator supports these paradigms.
 
-#### 1.3.2 Visual Geometry & Level of Detail
+#### 1.3.2 Level of Detail
 Each link's visual and collision scopes should be organized as sibling children (e.g., `/{link}/visual`, `/{link}/collision`).
 
 To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound physics simulators (Gazebo, MuJoCo), and lightweight web viewers, assets should provide multiple geometric representations via a `visual_lod` VariantSet on the visual scope:
@@ -140,7 +139,7 @@ To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound
 
 Collision meshes are not subject to visual LOD; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
 
-#### 1.3.3 Contact Physics & Materials
+#### 1.3.3 Contact Physics
 To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding. Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
 
 ### 1.3.4 Kinematic Loop Closures (`RoboticsLoopClosureAPI`)
@@ -149,7 +148,7 @@ OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` o
 *   **Parser Responsibility:** Parsers traversing the `body0`/`body1` relationships to build the kinematic tree must prune their traversal when encountering this schema, handling the joint as a standalone constraint rather than a parent-child hierarchical link.
 
 
-### 1.4 Safe Extensibility & Vendor Namespacing
+### 1.4 Isolation of vendor-specific extensions
 Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., mujoco:, isaac:). This applies to both formal vendor-supplied API schemas and ad-hoc custom attributes. This proprietary metadata must be strictly isolated within the ETL Pipeline's "Proprietary Layer" (Section 1.2.1) and never authored in the baseline simulation payload. Authors must strive to minimize proprietary layer to strictly necessary.
 
 ---
@@ -172,7 +171,7 @@ ROS 2 interface schemas (`Ros2TopicAPI`, `Ros2ServiceAPI`, `Ros2ActionAPI`) must
 *   **Sensor interfaces:** Localized interfaces (e.g., `Image`, `LaserScan`) must be placed on a child `UsdGeomXform` of the physical link. Multiple interfaces for the same sensor (e.g., `image_raw` and `camera_info`) must distribute them across separate child prims, one interface per prim.
 *   **Interface prims must reside outside payloads.** Prims bearing `Ros2*API` schemas are part of the lightweight kinematic/interface graph and must be traversable without loading geometry payloads.
 
-### 2.3 Interface Type Resolution & Naming
+### 2.3 Interface Resolution
 For all schema types (Topics, Services, Actions) defined below:
 *   **Type Resolution:** Tooling and compliant simulators must attempt to resolve the `ros2:*:type` string (e.g., `sensor_msgs/msg/Image`) dynamically against the sourced ROS 2 environment. If the interface type is not found, the simulator must safely disable that specific interface, allow the rest of the asset to function normally, and emit a distinct warning/error.
 *   **Name Validation:** All `ros2:*:name` values must strictly adhere to ROS 2 topic naming rules (alphanumeric, underscores, and forward slashes only; cannot start with a number).
@@ -186,7 +185,7 @@ Applies to Prims that exchange streaming ROS data.
 *   `string ros2:topic:type`: The ROS message type.
 *   `double ros2:topic:publish_rate`: Target publication frequency in Hz. Required for publishers; ignored for subscriptions.
 
-**Quality of Service (QoS) Attributes:**
+**Quality of Service (QoS):**
 Maps directly to `rmw_qos_profile_t` policies. If an attribute is omitted, simulators must assume the specified defaults. *(Note: As per REP 2003, simulated sensors should default to `"system_default"` which maps to best-effort, while map publishers should use `"transient_local"`).*
 *   `bool ros2:topic:qos:match_publisher` (Optional, Default: `false`). For subscriptions only. If `true`, the simulator bridge must attempt to use ROS 2 QoS matching to adapt to the discovered publisher, ignoring explicit reliability/durability settings.
 *   `token ros2:topic:qos:reliability`: Values: `["system_default", "reliable", "best_effort"]`. (Default: `"system_default"`).
@@ -228,7 +227,7 @@ OpenUSD cameras natively face the -Z axis, whereas ROS 2 optical frames (REP 103
 
 ---
 
-## 3. Interoperability and Distribution Profile
+## 3. Export and Conversion
 
 OpenUSD is a vast standard supporting complex features. To guarantee that assets can be distributed, viewed in desktop tools (e.g., `usdview`) or lightweight web tools (e.g., Foxglove, Webviz, Rerun), and successfully converted to glTF 2.0, assets must adhere to this constrained subset.
 
@@ -255,7 +254,7 @@ Procedural texture graphs (noise generation, math nodes, node graphs) are not in
 *   **Triangulation:** Collision meshes must be explicitly triangulated by the author. Visual meshes may use quads or n-gons, but converters targeting glTF 2.0 must triangulate all geometry at export time.
 *   **Manifold topology:** Collision meshes must be watertight (closed, manifold) and free of self-intersections to ensure stable physics and mass derivation. Non-manifold geometry (e.g., open edges) is strictly limited to purely visual meshes.
 
-### 3.5 Instanceable Leaves (Zero-Copy)
+### 3.5 Instanceable Leaves
 Repetitive geometry (bolts, LED arrays on a sensor) must utilize native OpenUSD instancing to minimize memory footprint. Authors must only instance leaf geometry (visuals and colliders), not logical Prims containing PhysicsRigidBodyAPI, Joints, or Ros2*API schemas, as OpenUSD instance proxies obscure child prims from relationship targeting. Authors must use one of two mechanisms to ensure correct glTF conversion:
 *   **Scenegraph instancing (`instanceable=true`):** Used for identical structural components (e.g., bolts). Note: The OpenUSD specification requires the prim to compose its geometry via a composition arc (Reference or Payload) for this flag to be valid. Converters must map this to native glTF Node sharing (multiple nodes referencing a single mesh index).
 *   **Point instancing (`UsdGeomPointInstancer`):** Used for massive arrays of atomic meshes (e.g., LED grids, warehouse clutter). It scatters a prototype using flat arrays of transforms. Converters must map this directly to the glTF EXT_mesh_gpu_instancing extension.
@@ -272,14 +271,14 @@ While OpenUSD natively handles structural variants, many of the simulation tools
 *    **Advanced compliance (material variants support):** Capable exporters may preserve material variations via the `KHR_materials_variants` extension. Because OpenUSD can arbitrarily override granular shader parameters, tools must evaluate each variant state, bake them into distinct glTF Material IDs in memory, and author the swap mapping.
 *    **Fallback:** The glTF extension is invalid if a variant alters underlying mesh topology. If geometry changes, or if the exporter lacks discrete state-evaluation logic, tools must safely fall back to Baseline Compliance.
 
-### 3.8 Conversion and Round-Tripping
+### 3.8 Lossy Conversion
 
 OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched paradigms. Because OpenUSD lacks native schemas for domain-specific data (e.g., URDF `<transmission>`, MJCF `<actuator>`), conversions are inherently lossy. Exporters must adhere to the following:
 *   **Payload Resolution:** The active simulation payload (kinematics, inertia, colliders) is the extraction priority. OpenUSD composition arcs and instance proxies must be fully baked into explicit geometry and transforms, never discarded.
 *   **API Translation:** Ros2*API schemas must map exclusively to modern extension blocks (e.g., SDF `<plugin>`, MJCF `<extension>`). Obsolete approaches such as injecting legacy `<gazebo>` tags into URDF are not allowed.
 *   **Discard, not inject:** OpenUSD-native metadata (layer stacks, unselected variants) must be cleanly discarded. Injecting custom, non-standard XML elements to store unmappable OpenUSD states is not recommended. If pipeline necessitates it for practicality, such metadata must be confined to valid, format-native extension points.
 
-## Tools & Reference Implementations
+## Compliance Checker
 A REP XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for every violation or non-conformance.
 
 ## References
