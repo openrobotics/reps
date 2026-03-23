@@ -103,6 +103,11 @@ OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., e
 #### 1.2.6 ROS-Compatible Identifiers
 OpenUSD natively enforces strict naming for Prims (they must start with a letter or underscore, followed by alphanumeric characters or underscores: [a-zA-Z_][a-zA-Z0-9_]*). This natively aligns with ROS conventions. Furthermore, Prim names intended to map directly to ROS TF Frames must not contain spaces or special characters that could violate downstream ROS 2 lexical rules.
 
+#### 1.2.7 Parallel Simulation and Instancing
+OpenUSD's native instancing mechanisms are designed for repetitive visual and structural geometry. They must not be used to clone articulated physics assets to create massive parallel arrays (e.g., for reinforcement learning).
+*    **Canonical Assets:** Authors must distribute a single, self-contained canonical environment.
+*    **Runtime Delegation:** Simulators supporting massive parallelism are expected to handle environment replication natively at runtime via their own APIs. Authors must not bake thousands of physics-enabled clones into the source file.
+
 ### 1.3 Physics & Kinematics
 
 *   **Rigid Body Hierarchy:** Assets should utilize Logical Nesting to represent kinematic chains (e.g., `Forearm` is a child of `UpperArm`). This preserves the Scene Graph for TF tree generation and ensures compatibility with parsers expecting URDF/SDF-like topologies (e.g., MuJoCo).
