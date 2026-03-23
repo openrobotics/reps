@@ -57,12 +57,29 @@ To ensure alignment with ROS standards (REP 103) and stability across solvers:
 ### 1.2 Asset Structure & Composition
 This REP adopts the ASWF Guidelines for Structuring USD Assets.
 
-#### 1.2.1 The Composition Model
+#### 1.2.1 Schema Isolation and Functional Layering (The ETL Pipeline)
+
+To avoid "Unknown Schema" errors in standard 3D authoring tools (e.g., Blender, Maya) and to ensure assets remain modular, functional layering (Extract-Transform-Load) should be utilized for ROS 2 interfaces, physics, and simulator-specific tooling syntax. 
+
+This REP endorses the ETL composition architecture developed collaboratively by NVIDIA, Intrinsic, and Disney Research for OpenUSD robotics assets.
+
+![Extract-Transform-Load Pipeline for Robots in USD](etl_pipeline_diagram.png)
+*Figure 1: The Extract-Transform-Load (ETL) composition pipeline for OpenUSD robotics assets. Source: [NVIDIA Developer Blog](https://developer.nvidia.com/blog/using-openusd-for-modular-and-scalable-robotic-simulation-and-development/)*
+
+As illustrated in Figure 1, assets should be divided into functional layers composed via References and Payloads:
+
+*   **Asset Source & Transformation (The Base Layer):** The raw CAD data (`asset_base.usd`) is optimized into simulation-ready geometry (`asset_sim_optimized.usd`). This layer contains native OpenUSD schemas (`UsdGeom`, `UsdShade`).
+*   **Features (The Domain-Specific Layers):** Domain metadata is isolated into specific overlay files that reference the Base Layer. For example, `asset_physics.usd` contains the rigid bodies and joints, while `asset_ros.usd` contains the `Ros2*API` schemas defined in this REP.
+*   **Entry Point (`asset.usd`):** The final distributed asset is a lightweight interface layer that uses **Payloads** to load the Features. 
+*   **Proprietary Layer:** Asset authors should avoid including heavy, simulator-specific implementations (e.g., proprietary execution graphs) within the interoperable asset package. If unavoidable, they must minimize this proprietary layer (e.g., `asset_isaac.usd`) to what is strictly necessary and keep it isolated as a separate Feature layer.
+
+
+#### 1.2.2 The Composition Model
 *   **Components:** Atomic assets (e.g., a `LidarSensor`, a `Box`) must have `kind="component"` on their root prim.
 *   **Assemblies:** Aggregates (e.g., a `Warehouse` containing racks) must have `kind="assembly"` or `kind="group"`.
 *   A `component` must not contain another `component`: if finer organizational granularity is required, authors must use kind="subcomponent" allowing converters to easily identify the "atomic units" of the scene.
 
-#### 1.2.2 Composition Arcs (LIVRPS Constraints)
+#### 1.2.3 Composition Arcs (LIVRPS Constraints)
 To guarantee that simulation assets remain self-contained, portable, and predictable across different simulator parsers, asset authors must adhere to the following constraints regarding OpenUSD's LIVRPS composition arcs:
 *   **[L] Local:** Primary authoring of overrides and properties on the asset is fully supported.
 *   **[I] Inherits & [S] Specializes:** Asset authors should not rely on `Inherits` or `Specializes` arcs for core robot kinematics, physics APIs, or ROS schemas when distributing standalone assets. These arcs create hard dependencies on external class hierarchies; if a simulator's environment lacks the base class definitions, the asset will fail to parse correctly.
@@ -72,18 +89,18 @@ To guarantee that simulation assets remain self-contained, portable, and predict
     *   Payloads must not gate joint or link prims themselves. The kinematic topology (Prims bearing `PhysicsRigidBodyAPI`, `PhysicsJoint` schemas, and `Ros2*API` schemas) must reside in the primarily loaded scene graph (e.g., via Local authoring or standard References). 
     *   The Payload should solely encapsulate the nested geometric and material data. This enables ROS parsers and web converters to traverse the lightweight kinematic tree efficiently without loading heavy buffers.
 
-#### 1.2.3 Variants and Reusability
+#### 1.2.4 Variants and Reusability
 OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., encapsulating multiple furniture styles, different robot end-effectors, or optional sensor suites within a single asset).
 *   **Default Variant Fallback:** Any asset utilizing `VariantSets` must author a default variant selection. This ensures that if the asset is loaded by a simulator or CI/CD pipeline without explicit variant overrides, it resolves to a valid, predictable physical and visual state.
 *   **ROS Interface Resolution:** A change in a variant selection may add or remove Prims containing `Ros2*API` schemas (e.g., swapping a generic robot head for a sensor-equipped head). Simulators and tooling must only evaluate and spawn ROS interfaces that are active within the currently resolved variant state of the stage.
 
-#### 1.2.4 Asset Management & FileFormat Plugins
+#### 1.2.5 Asset Management & FileFormat Plugins
 *   **Path Resolution:** Internal references must use relative paths (`./geo/mesh.usdc`). For distributed, highly interoperable assets, all file dependencies should be self-contained and rely exclusively on relative paths.
 *   **ROS packages:** External dependencies to other ROS packages must use the package:// URI scheme, and should be contained in ROS-specific .usd files in the ETL pipeline. Asset authors must be aware that resolving these URIs requires the host simulator or tool to implement a custom OpenUSD ArResolver plugin. Absolute paths and proprietary schemes (e.g., omniverse://) are strictly prohibited in distributed assets.
 *   **Native Composition vs. Custom Prefabs:** The use of custom or vendor-specific string attributes (e.g., `custom string my_sim:prefabPath = "robot.usd"`) to dynamically load, instantiate, or compose assets at runtime is strictly prohibited for interoperable assets. Asset composition must rely purely on native OpenUSD references or payloads.
 *   **FileFormat Plugins:** OpenUSD supports FileFormat plugins (e.g., MuJoCo's `usdMjcf` plugin) to dynamically translate legacy formats into USD stages at runtime. While these plugins are recommended for import pathways, this REP governs the *resulting in-memory OpenUSD data*. Plugins interfacing with the ROS 2 ecosystem must generate stages that conform to the physical hierarchies and API schemas defined in this document.
 
-#### 1.2.5 ROS-Compatible Identifiers
+#### 1.2.6 ROS-Compatible Identifiers
 OpenUSD natively enforces strict naming for Prims (they must start with a letter or underscore, followed by alphanumeric characters or underscores: [a-zA-Z_][a-zA-Z0-9_]*). This natively aligns with ROS conventions. Furthermore, Prim names intended to map directly to ROS TF Frames must not contain spaces or special characters that could violate downstream ROS 2 lexical rules.
 
 ### 1.3 Physics & Kinematics
@@ -118,10 +135,16 @@ To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound
 Collision meshes are not subject to visual LOD; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
 
 #### 1.3.3 Contact Physics & Materials
-To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding.Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
+To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding. Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
 
-#### 1.4 Safe Extensibility & Vendor Namespacing
-Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., mujoco:, isaac:). This applies to both formal vendor-supplied API schemas and ad-hoc custom attributes. This proprietary metadata must be strictly isolated within the ETL Pipeline's "Proprietary Layer" (Section 2.1) and never authored in the baseline simulation payload.
+### 1.3.4 Kinematic Loop Closures (`RoboticsLoopClosureAPI`)
+OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` or `MjcPhysics`) mechanism to identify joints that close a kinematic loop. Because many robotics simulators use reduced-coordinate (e.g., Featherstone) solvers that require strict spanning trees, parsers must know which joint to exclude from the primary tree.
+*   **Schema Application:** Asset authors must apply the `RoboticsLoopClosureAPI` to any `UsdPhysicsJoint` that closes a kinematic loop.
+*   **Parser Responsibility:** Parsers traversing the `body0`/`body1` relationships to build the kinematic tree must prune their traversal when encountering this schema, handling the joint as a standalone constraint rather than a parent-child hierarchical link.
+
+
+### 1.4 Safe Extensibility & Vendor Namespacing
+Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., mujoco:, isaac:). This applies to both formal vendor-supplied API schemas and ad-hoc custom attributes. This proprietary metadata must be strictly isolated within the ETL Pipeline's "Proprietary Layer" (Section 1.2.1) and never authored in the baseline simulation payload.
 
 ---
 
@@ -129,29 +152,13 @@ Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by
 
 Neither OpenUSD nor glTF 2.0 currently standardize the specification of ROS interfaces. This section defines a set of declarative, engine-agnostic API schemas (of type `SingleApply`). Simulators are responsible for reading these schemas and generating their respective underlying execution logic.
 
-### 2.1 Schema Isolation and Functional Layering (The ETL Pipeline)
-
-To avoid "Unknown Schema" errors in standard 3D authoring tools (e.g., Blender, Maya) and to ensure assets remain modular, functional layering (Extract-Transform-Load) should be utilized for ROS 2 interfaces, physics, and simulator-specific tooling syntax. 
-
-This REP endorses the ETL composition architecture developed collaboratively by NVIDIA, Intrinsic, and Disney Research for OpenUSD robotics assets.
-
-![Extract-Transform-Load Pipeline for Robots in USD](etl_pipeline_diagram.png)
-*Figure 1: The Extract-Transform-Load (ETL) composition pipeline for OpenUSD robotics assets. Source: [NVIDIA Developer Blog](https://developer.nvidia.com/blog/using-openusd-for-modular-and-scalable-robotic-simulation-and-development/)*
-
-As illustrated in Figure 1, assets should be divided into functional layers composed via References and Payloads:
-
-*   **Asset Source & Transformation (The Base Layer):** The raw CAD data (`asset_base.usd`) is optimized into simulation-ready geometry (`asset_sim_optimized.usd`). This layer contains native OpenUSD schemas (`UsdGeom`, `UsdShade`).
-*   **Features (The Domain-Specific Layers):** Domain metadata is isolated into specific overlay files that reference the Base Layer. For example, `asset_physics.usd` contains the rigid bodies and joints, while `asset_ros.usd` contains the `Ros2*API` schemas defined in this REP.
-*   **Entry Point (`asset.usd`):** The final distributed asset is a lightweight interface layer that uses **Payloads** to load the Features. 
-*   **Proprietary Layer:** Asset authors should avoid including heavy, simulator-specific implementations (e.g., proprietary execution graphs) within the interoperable asset package. If unavoidable, they must minimize this proprietary layer (e.g., `asset_isaac.usd`) to what is strictly necessary and keep it isolated as a separate Feature layer.
-
-### 2.2 The ROS 2 Context (`Ros2ContextAPI`)
+### 2.1 The ROS 2 Context (`Ros2ContextAPI`)
 The root prim of a ROS-interfaced simulation asset may define its context namespace.
 *   `string ros2:context:namespace`: Prefixes all topics within this scope (e.g., `/robot_1`). The namespace is additive in the asset hierarchy and with a top-level namespace set during simulation deployment (e.g., via the `SpawnEntity` service).
 *   `int ros2:context:domain_id` (Optional): Overrides the default ROS Domain ID for interfaces descending from this context.
 *   `string ros2:context:parent_frame` (Optional, Default: `"world"`): Defines the parent `frame_id` used when the simulator broadcasts the ground-truth transform of this context's root prim. It is only valid for the top-most context in the resolved USD Stage and ignored otherwise.
 
-### 2.3 Interface Placement
+### 2.2 Interface Placement
 
 ROS 2 interface schemas (`Ros2TopicAPI`, `Ros2ServiceAPI`, `Ros2ActionAPI`) must be applied to prims according to these placement rules:
 
@@ -159,12 +166,12 @@ ROS 2 interface schemas (`Ros2TopicAPI`, `Ros2ServiceAPI`, `Ros2ActionAPI`) must
 *   **Sensor interfaces:** Localized interfaces (e.g., `Image`, `LaserScan`) must be placed on a child `UsdGeomXform` of the physical link. Multiple interfaces for the same sensor (e.g., `image_raw` and `camera_info`) must distribute them across separate child prims, one interface per prim.
 *   **Interface prims must reside outside payloads.** Prims bearing `Ros2*API` schemas are part of the lightweight kinematic/interface graph and must be traversable without loading geometry payloads.
 
-### 2.4 Interface Type Resolution & Naming
+### 2.3 Interface Type Resolution & Naming
 For all schema types (Topics, Services, Actions) defined below:
 *   **Type Resolution:** Tooling and compliant simulators must attempt to resolve the `ros2:*:type` string (e.g., `sensor_msgs/msg/Image`) dynamically against the sourced ROS 2 environment. If the interface type is not found, the simulator must safely disable that specific interface, allow the rest of the asset to function normally, and emit a distinct warning/error.
 *   **Name Validation:** All `ros2:*:name` values must strictly adhere to ROS 2 topic naming rules (alphanumeric, underscores, and forward slashes only; cannot start with a number).
 
-### 2.5 Topic Interface (`Ros2TopicAPI`)
+### 2.4 Topic Interface (`Ros2TopicAPI`)
 Applies to Prims that exchange streaming ROS data.
 
 **Core Attributes (Required):**
@@ -181,19 +188,19 @@ Maps directly to `rmw_qos_profile_t` policies. If an attribute is omitted, simul
 *   `token ros2:topic:qos:history`: Values: `["system_default", "keep_last", "keep_all"]`. (Default: `"system_default"`).
 *   `int ros2:topic:qos:depth`: Queue size. Evaluated only when history is `keep_last`. (Default: `10`).
 
-### 2.6 Service Interface (`Ros2ServiceAPI`)
+### 2.5 Service Interface (`Ros2ServiceAPI`)
 Applies to Prims handling synchronous requests (e.g., resetting an environment).
 *   `token ros2:service:role`: Values: `["server", "client"]`. (Simulation assets are typically `server`).
 *   `string ros2:service:name`: The service name.
 *   `string ros2:service:type`: The service type (e.g., `std_srvs/srv/SetBool`).
 
-### 2.7 Action Interface (`Ros2ActionAPI`)
+### 2.6 Action Interface (`Ros2ActionAPI`)
 Applies to Prims handling asynchronous, long-running behaviors.
 *   `token ros2:action:role`: Values: `["server", "client"]`. (Simulation assets are typically `server`).
 *   `string ros2:action:name`: The action name.
 *   `string ros2:action:type`: The action type (e.g., `control_msgs/action/FollowJointTrajectory`).
 
-### 2.8 Frame Publishing and TF2 (`Ros2FrameAPI`)
+### 2.7 Frame Publishing and TF2 (`Ros2FrameAPI`)
 Mapping a deeply nested OpenUSD scene graph directly to a ROS 2 TF tree can cause significant performance overhead. To prevent flooding the `/tf` topic with generic physical props (e.g., warehouse boxes), compliant simulators should not broadcast transforms for every `PhysicsRigidBodyAPI`. 
 
 Instead, simulators should follow a hybrid implicit/explicit approach for broadcasting `tf2` transforms:
@@ -210,12 +217,7 @@ Instead, simulators should follow a hybrid implicit/explicit approach for broadc
 
 Note: The broadcast frequency of TF frames is an implementation detail left to the simulator's runtime configuration.
 
-### 2.9 Kinematic Loop Closures (`RoboticsLoopClosureAPI`)
-OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` or `MjcPhysics`) mechanism to identify joints that close a kinematic loop. Because many robotics simulators use reduced-coordinate (e.g., Featherstone) solvers that require strict spanning trees, parsers must know which joint to exclude from the primary tree.
-*   **Schema Application:** Asset authors must apply the `RoboticsLoopClosureAPI` to any `UsdPhysicsJoint` that closes a kinematic loop.
-*   **Parser Responsibility:** Parsers traversing the `body0`/`body1` relationships to build the kinematic tree must prune their traversal when encountering this schema, handling the joint as a standalone constraint rather than a parent-child hierarchical link.
-
-### 2.10 Optical Frames
+### 2.8 Optical Frames
 OpenUSD cameras natively face the -Z axis, whereas ROS 2 optical frames (REP 103) must face +Z. To bridge this without opaque simulator-side rotations, authors must decouple the physical sensor from its optical interface. Authors must create a child UsdGeomXform (e.g., `camera_optical_frame`) rotated 180 degrees around its local X-axis. All Ros2TopicAPI and Ros2FrameAPI schemas must be applied exclusively to this optical frame, ensuring deterministic data orientation in RViz.
 
 ---
