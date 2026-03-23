@@ -111,8 +111,8 @@ Collision geometries should explicitly specify `purpose="guide"` and `physics:ap
 Each link's visual and collision scopes should be organized as sibling children (e.g., `/{link}/visual`, `/{link}/collision`).
 
 To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound physics simulators (Gazebo, MuJoCo), and lightweight web viewers, assets should provide multiple geometric representations via a `visual_lod` VariantSet on the visual scope:
-1.  **High (Default Variant):** Full-fidelity source geometry. Suitable for ray-traced rendering and high-end visualization.
-2.  **Medium (Optional Variant):** Decimated geometry for real-time engines and standard simulation workloads.
+1.  **Medium (Default Variant):** Decimated geometry for real-time engines and standard simulation workloads.
+2.  **High (Optional Variant):** Full-fidelity source geometry (e.g. CAD). Suitable for ray-traced rendering and high-end visualization.
 3.  **Low (Optional Variant):** Aggressively simplified for web viewers, large-scale batch simulation, and GPU-instanced scenes (e.g., Genesis).
 
 Collision meshes are not subject to visual LOD; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
