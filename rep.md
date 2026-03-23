@@ -219,24 +219,28 @@ Procedural texture graphs (noise generation, math nodes, node graphs) are not in
 1.  **Image-Backed Textures:** Standard UV-mapped image files routed through standard UsdUVTexture shader nodes.
 2.  **Mesh primitive variables (Primvars)** such as baked vertex colors using standard USD interpolations. `"vertex"` interpolation is recommended, as `"uniform"` and `"faceVarying"` require converters to split the mesh vertices to comply with glTF’s vertex attribute requirements.
 
-### 3.4 Instanceable Leaves (Zero-Copy)
+### 3.4 Geometry Constraints
+*   Collision meshes must be triangulated. Visual meshes may use quad topology, but converters targeting glTF 2.0 must triangulate at export time.
+*   Non-manifold geometry (open edges, self-intersections) should be repaired at authoring time. Physics engines and web viewers handle non-manifold meshes unpredictably.
+
+### 3.5 Instanceable Leaves (Zero-Copy)
 Repetitive geometry (bolts, LED arrays on a sensor) must utilize native OpenUSD instancing to minimize memory footprint. Authors must only instance leaf geometry (visuals and colliders), not logical Prims containing PhysicsRigidBodyAPI, Joints, or Ros2*API schemas, as OpenUSD instance proxies obscure child prims from relationship targeting. Authors must use one of two mechanisms to ensure correct glTF conversion:
 *   *Scenegraph Instancing (`instanceable=true`):* Used for identical structural components (e.g., bolts). Note: The OpenUSD specification requires the prim to compose its geometry via a composition arc (Reference or Payload) for this flag to be valid. Converters must map this to native glTF Node sharing (multiple nodes referencing a single mesh index).
 *   *Point Instancing (`UsdGeomPointInstancer`):* Used for massive arrays of atomic meshes (e.g., LED grids, warehouse clutter). It scatters a prototype using flat arrays of transforms. Converters must map this directly to the glTF EXT_mesh_gpu_instancing extension.
 
-### 3.5 Lighting
+### 3.6 Lighting
 Lighting must be authored using core UsdLux schemas. To ensure deterministic illumination across standard rasterization-based simulators (e.g., Gazebo, MuJoCo, O3DE) and compatibility with web converters, authors must adhere to the following:
 *    *Punctual lights:* Assets should prioritize standard punctual lights: `UsdLuxDistantLight` (Directional), `UsdLuxSphereLight` (Point), and `UsdLuxSphereLight` modified by the `UsdLuxShapingAPI` (Spot). Converters must map these directly to the glTF `KHR_lights_punctual` extension.
 *    *Area lights:* Complex area lights (e.g., `UsdLuxRectLight`, `UsdLuxCylinderLight`) lack universal support outside of path-traced engines and should be avoided for interoperable assets.
 *    *Emissive materials and functional lights:* The `emissiveColor` attribute on a `UsdPreviewSurface` must be used for indicators such as robot status LEDs so the source itself appears bright. However, emissive geometry must not be used for primary scene illumination, as standard simulator rasterizers will not compute their light transport. If a robot component must actively illuminate its surroundings, authors must co-locate a standard `UsdLux` punctual light with the emissive geometry under the same parent `Xform`. The material provides the visible glow of the source, while the paired `UsdLux` prim provides the interoperable scene illumination.
 
-### 3.6 Variant Baking for Export
+### 3.7 Variant Baking for Export
 While OpenUSD natively handles structural variants, many of the simulation tools and formats in the ecosystem don't, including URDF, SDF and glTF 2.0. Due to the burden of implementation, this REP proposes both a baseline and an advanced compliance:
 *    *Baseline compliance:* Converters must export only the active or default variant, destructively discarding all others. This resolved state must be baked by flattening USD composition arcs into a static, logically nested kinematic tree. Never flatten into world-space, as this permanently destroys local joint transforms and ROS TF trees.
 *    *Advanced compliance (material variants support):* Capable exporters may preserve material variations via the `KHR_materials_variants` extension. Because USD can arbitrarily override granular shader parameters, tools must evaluate each variant state, bake them into distinct glTF Material IDs in memory, and author the swap mapping.
 *    *Fallback: The glTF extension is invalid if a variant alters underlying mesh topology. If geometry changes, or if the exporter lacks discrete state-evaluation logic, tools must safely fall back to Baseline Compliance..
 
-### 3.7 Conversion and Round-Tripping
+### 3.8 Conversion and Round-Tripping
 
 OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched paradigms. Because OpenUSD lacks native schemas for domain-specific data (e.g., URDF <transmission>, MJCF <actuator>), conversions are inherently lossy. Exporters must adhere to the following:
 *   *Payload Resolution:* The active simulation payload (kinematics, inertia, colliders) is the extraction priority. USD composition arcs and instance proxies must be fully baked into explicit geometry and transforms, never discarded.
