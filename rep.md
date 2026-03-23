@@ -190,7 +190,7 @@ Maps directly to `rmw_qos_profile_t` policies. If an attribute is omitted, simul
 *   `int ros2:topic:qos:depth`: Queue size. Evaluated only when history is `keep_last`. (Default: `10`).
 
 ### 2.5 Service Interface (`Ros2ServiceAPI`)
-Applies to Prims handling synchronous requests (e.g., resetting an environment).
+Applies to Prims handling synchronous requests (e.g., blinking lights).
 *   `token ros2:service:role`: Values: `["server", "client"]`. (Simulation assets are typically `server`).
 *   `string ros2:service:name`: The service name.
 *   `string ros2:service:type`: The service type (e.g., `std_srvs/srv/SetBool`).
