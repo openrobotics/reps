@@ -253,14 +253,14 @@ Lighting must be authored using core UsdLux schemas. To ensure deterministic ill
 While OpenUSD natively handles structural variants, many of the simulation tools and formats in the ecosystem don't, including URDF, SDF and glTF 2.0. Due to the burden of implementation, this REP proposes both a baseline and an advanced compliance:
 *    **Baseline compliance:** Converters must export only the active or default variant, destructively discarding all others. This resolved state must be baked by flattening OpenUSD composition arcs into a static, logically nested kinematic tree. Never flatten into world-space, as this permanently destroys local joint transforms and ROS TF trees.
 *    **Advanced compliance (material variants support):** Capable exporters may preserve material variations via the `KHR_materials_variants` extension. Because OpenUSD can arbitrarily override granular shader parameters, tools must evaluate each variant state, bake them into distinct glTF Material IDs in memory, and author the swap mapping.
-*    **Fallback:** The glTF extension is invalid if a variant alters underlying mesh topology. If geometry changes, or if the exporter lacks discrete state-evaluation logic, tools must safely fall back to Baseline Compliance..
+*    **Fallback:** The glTF extension is invalid if a variant alters underlying mesh topology. If geometry changes, or if the exporter lacks discrete state-evaluation logic, tools must safely fall back to Baseline Compliance.
 
 ### 3.8 Conversion and Round-Tripping
 
-OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched paradigms. Because OpenUSD lacks native schemas for domain-specific data (e.g., URDF <transmission>, MJCF <actuator>), conversions are inherently lossy. Exporters must adhere to the following:
-*   *Payload Resolution:* The active simulation payload (kinematics, inertia, colliders) is the extraction priority. OpenUSD composition arcs and instance proxies must be fully baked into explicit geometry and transforms, never discarded.
-*   *API Translation:* Ros2*API schemas must map exclusively to modern extension blocks (e.g., SDF <plugin>, MJCF <extension>). Obsolete approaches such as injecting legacy <gazebo> tags into URDF are not allowed.
-*   *Discard, not inject:* OpenUSD-native metadata (layer stacks, unselected variants) must be cleanly discarded. Injecting custom, non-standard XML elements to store unmappable OpenUSD states is not recommended. If pipeline necessitates it for practicality, such metadata must be confined to valid, format-native extension points.
+OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched paradigms. Because OpenUSD lacks native schemas for domain-specific data (e.g., URDF `<transmission>`, MJCF `<actuator>`), conversions are inherently lossy. Exporters must adhere to the following:
+*   **Payload Resolution:** The active simulation payload (kinematics, inertia, colliders) is the extraction priority. OpenUSD composition arcs and instance proxies must be fully baked into explicit geometry and transforms, never discarded.
+*   **API Translation:** Ros2*API schemas must map exclusively to modern extension blocks (e.g., SDF `<plugin>`, MJCF `<extension>`). Obsolete approaches such as injecting legacy `<gazebo>` tags into URDF are not allowed.
+*   **Discard, not inject:** OpenUSD-native metadata (layer stacks, unselected variants) must be cleanly discarded. Injecting custom, non-standard XML elements to store unmappable OpenUSD states is not recommended. If pipeline necessitates it for practicality, such metadata must be confined to valid, format-native extension points.
 
 ## Tools & Reference Implementations
 A REP XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for every violation or non-conformance.
@@ -273,7 +273,6 @@ A REP XXXX compliance checker is to be developed and shared with the community. 
 *   **[REP-2003]** ROS Enhancement Proposal 2003, "Sensor Data and Map QoS Settings".
 *   **[GLTF-2.0]** Khronos Group, "glTF 2.0 Specification".
 *   **[GLTF-EXT-INSTANCING]** Khronos Group, "EXT_mesh_gpu_instancing Extension Specification".
-*   **[GLTF-KHR-RIGID]** Khronos Group, "KHR_rigid_bodies Extension Specification" (Draft).
 
 ## Copyright
 This document will be placed in the public domain upon being submitted as PR to a REP proposal by original authors. This text will be changed to "This document is placed in the public domain".
