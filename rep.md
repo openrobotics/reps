@@ -132,6 +132,7 @@ As illustrated in Figure 1, assets should be divided into functional layers comp
 ### 2.2 The ROS 2 Context (`Ros2ContextAPI`)
 The root prim of a ROS-interfaced simulation asset may define its context namespace.
 *   `string ros2:context:namespace`: Prefixes all topics within this scope (e.g., `/robot_1`). The namespace is additive in the asset hierarchy and with a top-level namespace set during simulation deployment (e.g., via the `SpawnEntity` service).
+*   `int ros2:context:domain_id` (Optional): Overrides the default ROS Domain ID for interfaces descending from this context.
 *   `string ros2:context:parent_frame` (Optional, Default: `"world"`): Defines the parent `frame_id` used when the simulator broadcasts the ground-truth transform of this context's root prim. It is only valid for the top-most context in the resolved USD Stage and ignored otherwise.
 
 ### 2.3 Interface Placement
