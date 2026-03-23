@@ -58,7 +58,7 @@ This REP adopts the ASWF Guidelines for Structuring USD Assets.
 #### 1.2.1 The Composition Model
 *   **Components:** Atomic assets (e.g., a `LidarSensor`, a `Box`) must have `kind="component"` on their root prim.
 *   **Assemblies:** Aggregates (e.g., a `Warehouse` containing racks) must have `kind="assembly"` or `kind="group"`.
-*   A `component` must not contain another `component`, allowing converters to easily identify the "atomic units" of the scene.
+*   A `component` must not contain another `component`: if finer organizational granularity is required, authors must use kind="subcomponent" allowing converters to easily identify the "atomic units" of the scene.
 
 #### 1.2.2 Composition Arcs (LIVRPS Constraints)
 To guarantee that simulation assets remain self-contained, portable, and predictable across different simulator parsers, asset authors must adhere to the following constraints regarding OpenUSD's LIVRPS composition arcs:
@@ -76,12 +76,13 @@ OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., e
 *   **ROS Interface Resolution:** A change in a variant selection may add or remove Prims containing `Ros2*API` schemas (e.g., swapping a generic robot head for a sensor-equipped head). Simulators and tooling must only evaluate and spawn ROS interfaces that are active within the currently resolved variant state of the stage.
 
 #### 1.2.4 Asset Management & FileFormat Plugins
-*   **Path Resolution:** Internal references must use relative paths (`./geo/mesh.usdc`). External dependencies to other ROS packages must use the `package://` URI scheme. Absolute paths and proprietary schemes (e.g., `omniverse://`) are prohibited in distributed assets.
+*   **Path Resolution:** Internal references must use relative paths (`./geo/mesh.usdc`). For distributed, highly interoperable assets, all file dependencies should be self-contained and rely exclusively on relative paths.
+*   **ROS packages:** External dependencies to other ROS packages must use the package:// URI scheme, and should be contained in ROS-specific .usd files in the ETL pipeline. Asset authors must be aware that resolving these URIs requires the host simulator or tool to implement a custom OpenUSD ArResolver plugin. Absolute paths and proprietary schemes (e.g., omniverse://) are strictly prohibited in distributed assets.
 *   **Native Composition vs. Custom Prefabs:** The use of custom or vendor-specific string attributes (e.g., `custom string my_sim:prefabPath = "robot.usd"`) to dynamically load, instantiate, or compose assets at runtime is strictly prohibited for interoperable assets. Asset composition must rely purely on native OpenUSD references or payloads.
 *   **FileFormat Plugins:** OpenUSD supports FileFormat plugins (e.g., MuJoCo's `usdMjcf` plugin) to dynamically translate legacy formats into USD stages at runtime. While these plugins are recommended for import pathways, this REP governs the *resulting in-memory OpenUSD data*. Plugins interfacing with the ROS 2 ecosystem must generate stages that conform to the physical hierarchies and API schemas defined in this document.
 
 #### 1.2.5 ROS-Compatible Identifiers
-OpenUSD allows flexible naming, but ROS 2 has strict lexical rules. Prim names intended to map to ROS TF Frames must be alphanumeric with underscores (`[a-zA-Z0-9_]`) and must not contain spaces (e.g., `Left_Arm`, not `Left Arm`).
+OpenUSD natively enforces strict naming for Prims (they must start with a letter or underscore, followed by alphanumeric characters or underscores: [a-zA-Z_][a-zA-Z0-9_]*). This natively aligns with ROS conventions. Furthermore, Prim names intended to map directly to ROS TF Frames must not contain spaces or special characters that could violate downstream ROS 2 lexical rules.
 
 ### 1.3 Physics & Kinematics
 
