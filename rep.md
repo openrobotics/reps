@@ -97,11 +97,11 @@ OpenUSD natively enforces strict naming for Prims (they must start with a letter
     * Static Environments: Fixed props (e.g., walls, racks) must possess a PhysicsCollisionAPI but omit the PhysicsRigidBodyAPI. OpenUSD implicitly treats these as having zero velocity and infinite mass.
     * Robot Anchors: A fixed robot base must have a valid mass > 0 and be anchored via a UsdPhysicsFixedJoint with an empty physics:body0 relationship (which natively represents the world).
     * *Kinematic Bodies:* Moving bodies that are animated but not dynamically driven by physics should set the physics:kinematicEnabled attribute to true.
-    * *Dummy Frames:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `Ros2FrameAPI` as defined in Section 2.7.
+    * *Dummy Frames:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `Ros2FrameAPI` as defined in Section 2.8.
 *   **Inertia Representation:** Unlike URDF and SDFormat's 6-value symmetric matrix, OpenUSD requires an eigendecomposed inertia tensor. Converters must mathematically decompose the source matrix into physics:diagonalInertia (eigenvalues) and physics:principalAxes (quaternion). This native decomposed form is the strict single source of truth; custom 6-value array attributes must not be authored or parsed.
 
 #### 1.3.1 Collisions & The Dual-Fidelity Pattern
-Collision geometries must explicitly specify `purpose="guide"` and `physics:approximation="none"`. To ensure assets function across both standard physics engines and advanced contact-rich solvers (e.g., Newton), assets should employ a "Dual-Fidelity Pattern" utilizing a `collision_fidelity` OpenUSD `VariantSet`:
+Collision geometries should explicitly specify `purpose="guide"` and `physics:approximation="none"`. To ensure assets function across both standard physics engines and advanced contact-rich solvers (e.g., Newton), assets should employ a "Dual-Fidelity Pattern" utilizing a `collision_fidelity` OpenUSD `VariantSet`:
 1.  **Baseline Approximation (Default Variant):** The default variant must contain "convexHull" or primitive shapes.
 2.  **Advanced Approximation (Optional Variant):** A secondary variant may contain high-fidelity concave trimeshes intended for Signed Distance Field (SDF) or Hydroelastic collision generation, provided the target simulator supports these paradigms.
 
@@ -132,15 +132,22 @@ As illustrated in Figure 1, assets should be divided into functional layers comp
 ### 2.2 The ROS 2 Context (`Ros2ContextAPI`)
 The root prim of a ROS-interfaced simulation asset may define its context namespace.
 *   `string ros2:context:namespace`: Prefixes all topics within this scope (e.g., `/robot_1`). The namespace is additive in the asset hierarchy and with a top-level namespace set during simulation deployment (e.g., via the `SpawnEntity` service).
-*   `int ros2:context:domain_id` (Optional): Overrides the default ROS Domain ID for interfaces descending from this context.
 *   `string ros2:context:parent_frame` (Optional, Default: `"world"`): Defines the parent `frame_id` used when the simulator broadcasts the ground-truth transform of this context's root prim. It is only valid for the top-most context in the resolved USD Stage and ignored otherwise.
 
-### 2.3 Interface Type Resolution & Naming
+### 2.3 Interface Placement
+
+ROS 2 interface schemas (`Ros2TopicAPI`, `Ros2ServiceAPI`, `Ros2ActionAPI`) must be applied to prims according to these placement rules:
+
+*   **Robot-wide interfaces** (e.g., `sensor_msgs/msg/JointState` publisher, `control_msgs/action/FollowJointTrajectory` server) must be placed on or under the prim bearing the `Ros2ContextAPI`. These represent aggregate interfaces that span the entire kinematic tree.
+*   **Sensor interfaces** (e.g., `sensor_msgs/msg/Image` publisher, `sensor_msgs/msg/CameraInfo` publisher) must be placed on the sensor prim — a child Xform of the link the sensor is mounted on. Multiple interfaces for the same sensor (e.g., `image_raw` and `camera_info`) must use separate child prims, one per interface.
+*   **Interface prims must reside outside payloads.** Prims bearing `Ros2*API` schemas are part of the lightweight kinematic/interface graph and must be traversable without loading geometry payloads.
+
+### 2.4 Interface Type Resolution & Naming
 For all schema types (Topics, Services, Actions) defined below:
 *   **Type Resolution:** Tooling and compliant simulators must attempt to resolve the `ros2:*:type` string (e.g., `sensor_msgs/msg/Image`) dynamically against the sourced ROS 2 environment. If the interface type is not found, the simulator must safely disable that specific interface, allow the rest of the asset to function normally, and emit a distinct warning/error.
 *   **Name Validation:** All `ros2:*:name` values must strictly adhere to ROS 2 topic naming rules (alphanumeric, underscores, and forward slashes only; cannot start with a number).
 
-### 2.4 Topic Interface (`Ros2TopicAPI`)
+### 2.5 Topic Interface (`Ros2TopicAPI`)
 Applies to Prims that exchange streaming ROS data.
 
 **Core Attributes (Required):**
@@ -157,19 +164,19 @@ Maps directly to `rmw_qos_profile_t` policies. If an attribute is omitted, simul
 *   `token ros2:topic:qos:history`: Values: `["system_default", "keep_last", "keep_all"]`. (Default: `"system_default"`).
 *   `int ros2:topic:qos:depth`: Queue size. Evaluated only when history is `keep_last`. (Default: `10`).
 
-### 2.5 Service Interface (`Ros2ServiceAPI`)
+### 2.6 Service Interface (`Ros2ServiceAPI`)
 Applies to Prims handling synchronous requests (e.g., resetting an environment).
 *   `token ros2:service:role`: Values: `["server", "client"]`. (Simulation assets are typically `server`).
 *   `string ros2:service:name`: The service name.
 *   `string ros2:service:type`: The service type (e.g., `std_srvs/srv/SetBool`).
 
-### 2.6 Action Interface (`Ros2ActionAPI`)
+### 2.7 Action Interface (`Ros2ActionAPI`)
 Applies to Prims handling asynchronous, long-running behaviors.
 *   `token ros2:action:role`: Values: `["server", "client"]`. (Simulation assets are typically `server`).
 *   `string ros2:action:name`: The action name.
 *   `string ros2:action:type`: The action type (e.g., `control_msgs/action/FollowJointTrajectory`).
 
-### 2.7 Frame Publishing and TF2 (`Ros2FrameAPI`)
+### 2.8 Frame Publishing and TF2 (`Ros2FrameAPI`)
 Mapping a deeply nested OpenUSD scene graph directly to a ROS 2 TF tree can cause significant performance overhead. To prevent flooding the `/tf` topic with generic physical props (e.g., warehouse boxes), compliant simulators should not broadcast transforms for every `PhysicsRigidBodyAPI`. 
 
 Instead, simulators should follow a hybrid implicit/explicit approach for broadcasting `tf2` transforms:
@@ -177,14 +184,14 @@ Instead, simulators should follow a hybrid implicit/explicit approach for broadc
 *   **Implicit TF Broadcasting (The Asset Tree):** Simulators should automatically infer and broadcast TF frames (using the ROS-validated Prim name) for Prims that represent a ROS interface structure:
     1.  **The ROS Root:** Any Prim possessing the `Ros2ContextAPI` (often the `base_link`).
     2.  **Kinematic Chains:** Any Prim possessing a `PhysicsRigidBodyAPI` that is connected (directly or recursively) via a `UsdPhysicsJoint` to a Prim already in the TF tree. This captures robot arms and wheeled bases automatically.
-    3.  **Interface Frames:** Any Prim possessing a `Ros2TopicAPI`, `Ros2ServiceAPI`, or `Ros2ActionAPI`.
     *   *Routing Rule:* If the implicit frame is connected to its parent via a `PhysicsFixedJoint`, or has no joint but is rigidly parented in the USD hierarchy, the simulator must broadcast it to `/tf_static`. All movable joint connections must be broadcast to `/tf`.
+    *   Prims bearing only `Ros2TopicAPI`, `Ros2ServiceAPI`, or `Ros2ActionAPI` do not generate TF frames. An interface prim's `frame_id` is determined by its nearest ancestor that is a TF frame (implicit or explicit).
 
 *   **Explicit TF Broadcasting (`Ros2FrameAPI`):** To publish TFs for non-physical dummy frames (e.g., a kinematic `grasp_point`, a `camera_optical_frame`), asset authors must apply the `Ros2FrameAPI` schema to the target `UsdGeomXform` Prim.
     *   `string ros2:frame:id` (Optional): Overrides the TF frame name. If omitted, the validated Prim name is used.
     *   `bool ros2:frame:static` (Optional, Default: `true`): Defines the broadcast destination. If `true`, the simulator must broadcast the frame to `/tf_static` relative to its USD parent. If `false` (e.g., an Xform animated by USD TimeSamples), it must be broadcast to `/tf`.
 
-### 2.8 Kinematic Loop Closures (`RoboticsLoopClosureAPI`)
+### 2.9 Kinematic Loop Closures (`RoboticsLoopClosureAPI`)
 OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` or `MjcPhysics`) mechanism to identify joints that close a kinematic loop. Because many robotics simulators use reduced-coordinate (e.g., Featherstone) solvers that require strict spanning trees, parsers must know which joint to exclude from the primary tree.
 *   **Schema Application:** Asset authors must apply the `RoboticsLoopClosureAPI` to any `UsdPhysicsJoint` that closes a kinematic loop.
 *   **Parser Responsibility:** Parsers traversing the `body0`/`body1` relationships to build the kinematic tree must prune their traversal when encountering this schema, handling the joint as a standalone constraint rather than a parent-child hierarchical link.
