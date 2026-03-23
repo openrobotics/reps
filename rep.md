@@ -117,6 +117,12 @@ To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound
 
 Collision meshes are not subject to visual LOD; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
 
+#### 1.3.3 Contact Physics & Materials
+To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding.Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
+
+#### 1.4 Safe Extensibility & Vendor Namespacing
+Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., mujoco:, isaac:). This applies to both formal vendor-supplied API schemas and ad-hoc custom attributes. This proprietary metadata must be strictly isolated within the ETL Pipeline's "Proprietary Layer" (Section 2.1) and never authored in the baseline simulation payload.
+
 ---
 
 ## 2. ROS 2 Integration Schemas
@@ -208,6 +214,9 @@ Instead, simulators should follow a hybrid implicit/explicit approach for broadc
 OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` or `MjcPhysics`) mechanism to identify joints that close a kinematic loop. Because many robotics simulators use reduced-coordinate (e.g., Featherstone) solvers that require strict spanning trees, parsers must know which joint to exclude from the primary tree.
 *   **Schema Application:** Asset authors must apply the `RoboticsLoopClosureAPI` to any `UsdPhysicsJoint` that closes a kinematic loop.
 *   **Parser Responsibility:** Parsers traversing the `body0`/`body1` relationships to build the kinematic tree must prune their traversal when encountering this schema, handling the joint as a standalone constraint rather than a parent-child hierarchical link.
+
+### 2.10 Optical Frames
+OpenUSD cameras natively face the -Z axis, whereas ROS 2 optical frames (REP 103) must face +Z. To bridge this without opaque simulator-side rotations, authors must decouple the physical sensor from its optical interface. Authors must create a child UsdGeomXform (e.g., `camera_optical_frame`) rotated 180 degrees around its local X-axis. All Ros2TopicAPI and Ros2FrameAPI schemas must be applied exclusively to this optical frame, ensuring deterministic data orientation in RViz.
 
 ---
 
