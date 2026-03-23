@@ -149,8 +149,8 @@ The root prim of a ROS-interfaced simulation asset may define its context namesp
 
 ROS 2 interface schemas (`Ros2TopicAPI`, `Ros2ServiceAPI`, `Ros2ActionAPI`) must be applied to prims according to these placement rules:
 
-*   **Robot-wide interfaces** (e.g., `sensor_msgs/msg/JointState` publisher, `control_msgs/action/FollowJointTrajectory` server) must be placed on or under the prim bearing the `Ros2ContextAPI`. These represent aggregate interfaces that span the entire kinematic tree.
-*   **Sensor interfaces** (e.g., `sensor_msgs/msg/Image` publisher, `sensor_msgs/msg/CameraInfo` publisher) must be placed on the sensor prim — a child Xform of the link the sensor is mounted on. Multiple interfaces for the same sensor (e.g., `image_raw` and `camera_info`) must use separate child prims, one per interface.
+*   **Robot-wide interfaces:** Aggregate interfaces spanning a kinematic tree (e.g., `JointState` publisher, `FollowJointTrajectory` server) must be placed on or directly beneath the prim bearing the `Ros2ContextAPI`.
+*   **Sensor interfaces:** Localized interfaces (e.g., `Image`, `LaserScan`) must be placed on a child `UsdGeomXform` of the physical link. Multiple interfaces for the same sensor (e.g., `image_raw` and `camera_info`) must distribute them across separate child prims, one interface per prim.
 *   **Interface prims must reside outside payloads.** Prims bearing `Ros2*API` schemas are part of the lightweight kinematic/interface graph and must be traversable without loading geometry payloads.
 
 ### 2.4 Interface Type Resolution & Naming
@@ -230,19 +230,19 @@ Procedural texture graphs (noise generation, math nodes, node graphs) are not in
 2.  **Mesh primitive variables (Primvars)** such as baked vertex colors using standard USD interpolations. `"vertex"` interpolation is recommended, as `"uniform"` and `"faceVarying"` require converters to split the mesh vertices to comply with glTF’s vertex attribute requirements.
 
 ### 3.4 Geometry Constraints
-*   Collision meshes must be triangulated. Visual meshes may use quad topology, but converters targeting glTF 2.0 must triangulate at export time.
-*   Non-manifold geometry (open edges, self-intersections) should be repaired at authoring time. Physics engines and web viewers handle non-manifold meshes unpredictably.
+*   **Triangulation:** Collision meshes must be explicitly triangulated by the author. Visual meshes may use quads or n-gons, but converters targeting glTF 2.0 must triangulate all geometry at export time.
+*   **Manifold topology:** Collision meshes must be watertight (closed, manifold) and free of self-intersections to ensure stable physics and mass derivation. Non-manifold geometry (e.g., open edges) is strictly limited to purely visual meshes.
 
 ### 3.5 Instanceable Leaves (Zero-Copy)
 Repetitive geometry (bolts, LED arrays on a sensor) must utilize native OpenUSD instancing to minimize memory footprint. Authors must only instance leaf geometry (visuals and colliders), not logical Prims containing PhysicsRigidBodyAPI, Joints, or Ros2*API schemas, as OpenUSD instance proxies obscure child prims from relationship targeting. Authors must use one of two mechanisms to ensure correct glTF conversion:
-*   *Scenegraph Instancing (`instanceable=true`):* Used for identical structural components (e.g., bolts). Note: The OpenUSD specification requires the prim to compose its geometry via a composition arc (Reference or Payload) for this flag to be valid. Converters must map this to native glTF Node sharing (multiple nodes referencing a single mesh index).
-*   *Point Instancing (`UsdGeomPointInstancer`):* Used for massive arrays of atomic meshes (e.g., LED grids, warehouse clutter). It scatters a prototype using flat arrays of transforms. Converters must map this directly to the glTF EXT_mesh_gpu_instancing extension.
+*   **Scenegraph instancing (`instanceable=true`):** Used for identical structural components (e.g., bolts). Note: The OpenUSD specification requires the prim to compose its geometry via a composition arc (Reference or Payload) for this flag to be valid. Converters must map this to native glTF Node sharing (multiple nodes referencing a single mesh index).
+*   **Point instancing (`UsdGeomPointInstancer`):** Used for massive arrays of atomic meshes (e.g., LED grids, warehouse clutter). It scatters a prototype using flat arrays of transforms. Converters must map this directly to the glTF EXT_mesh_gpu_instancing extension.
 
 ### 3.6 Lighting
 Lighting must be authored using core UsdLux schemas. To ensure deterministic illumination across standard rasterization-based simulators (e.g., Gazebo, MuJoCo, O3DE) and compatibility with web converters, authors must adhere to the following:
-*    *Punctual lights:* Assets should prioritize standard punctual lights: `UsdLuxDistantLight` (Directional), `UsdLuxSphereLight` (Point), and `UsdLuxSphereLight` modified by the `UsdLuxShapingAPI` (Spot). Converters must map these directly to the glTF `KHR_lights_punctual` extension.
-*    *Area lights:* Complex area lights (e.g., `UsdLuxRectLight`, `UsdLuxCylinderLight`) lack universal support outside of path-traced engines and should be avoided for interoperable assets.
-*    *Emissive materials and functional lights:* The `emissiveColor` attribute on a `UsdPreviewSurface` must be used for indicators such as robot status LEDs so the source itself appears bright. However, emissive geometry must not be used for primary scene illumination, as standard simulator rasterizers will not compute their light transport. If a robot component must actively illuminate its surroundings, authors must co-locate a standard `UsdLux` punctual light with the emissive geometry under the same parent `Xform`. The material provides the visible glow of the source, while the paired `UsdLux` prim provides the interoperable scene illumination.
+*    **Punctual lights:** Assets should prioritize standard punctual lights: `UsdLuxDistantLight` (Directional), `UsdLuxSphereLight` (Point), and `UsdLuxSphereLight` modified by the `UsdLuxShapingAPI` (Spot). Converters must map these directly to the glTF `KHR_lights_punctual` extension.
+*    **Area lights:** Complex area lights (e.g., `UsdLuxRectLight`, `UsdLuxCylinderLight`) lack universal support outside of path-traced engines and should be avoided for interoperable assets.
+*    **Emissive materials and functional lights:** The `emissiveColor` attribute on a `UsdPreviewSurface` must be used for indicators such as robot status LEDs so the source itself appears bright. However, emissive geometry must not be used for primary scene illumination, as standard simulator rasterizers will not compute their light transport. If a robot component must actively illuminate its surroundings, authors must co-locate a standard `UsdLux` punctual light with the emissive geometry under the same parent `Xform`. The material provides the visible glow of the source, while the paired `UsdLux` prim provides the interoperable scene illumination.
 
 ### 3.7 Variant Baking for Export
 While OpenUSD natively handles structural variants, many of the simulation tools and formats in the ecosystem don't, including URDF, SDF and glTF 2.0. Due to the burden of implementation, this REP proposes both a baseline and an advanced compliance:
@@ -257,21 +257,8 @@ OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched 
 *   *API Translation:* Ros2*API schemas must map exclusively to modern extension blocks (e.g., SDF <plugin>, MJCF <extension>). Obsolete approaches such as injecting legacy <gazebo> tags into URDF are not allowed.
 *   *Discard, not inject:* OpenUSD-native metadata (layer stacks, unselected variants) must be cleanly discarded. Injecting custom, non-standard XML elements to store unmappable OpenUSD states is not recommended. If pipeline necessitates it for practicality, such metadata must be confined to valid, format-native extension points.
 
-### 3.9 Asset Versioning
-USD has no native schema versioning. To prevent silent misinterpretation as this specification evolves, assets must declare their conformance target.
-
-**Root Prim Metadata (Required):**
-*   `int rep:versionMajor` — Incremented for breaking changes (new required APIs, layout changes, new restrictions).
-*   `int rep:versionMinor` — Incremented for additive changes (new optional APIs, relaxed constraints).
-
-**Root Prim Metadata (Optional):**
-*   `string rep:authoringTool` — Identifier of the tool that produced the asset (e.g., `"o3de-2405"`, `"urdf2usd-1.2"`).
-*   `token rep:sourceFormat` — Original format if converted: `"urdf"`, `"sdf"`, `"mjcf"`, `"native"`.
-
-**Compatibility:** Major version mismatch — consumers must warn, may refuse to load. Minor version mismatch (consumer < asset) — consumers must warn, should load. Minor version mismatch (consumer > asset) — safe.
-
 ## Tools & Reference Implementations
-A REP XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for each divergence.
+A REP XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for every violation or non-conformance.
 
 ## References
 *   **[NVIDIA-ETL-PIPELINE]** NVIDIA, Intrinsic, Disney Research. "Using OpenUSD for Modular and Scalable Robotic Simulation and Development". URL: `https://developer.nvidia.com/blog/using-openusd-for-modular-and-scalable-robotic-simulation-and-development/`
