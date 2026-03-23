@@ -144,7 +144,7 @@ OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` o
 
 
 ### 1.4 Safe Extensibility & Vendor Namespacing
-Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., mujoco:, isaac:). This applies to both formal vendor-supplied API schemas and ad-hoc custom attributes. This proprietary metadata must be strictly isolated within the ETL Pipeline's "Proprietary Layer" (Section 1.2.1) and never authored in the baseline simulation payload.
+Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., mujoco:, isaac:). This applies to both formal vendor-supplied API schemas and ad-hoc custom attributes. This proprietary metadata must be strictly isolated within the ETL Pipeline's "Proprietary Layer" (Section 1.2.1) and never authored in the baseline simulation payload. Authors must strive to minimize proprietary layer to strictly necessary.
 
 ---
 
