@@ -257,6 +257,19 @@ OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched 
 *   *API Translation:* Ros2*API schemas must map exclusively to modern extension blocks (e.g., SDF <plugin>, MJCF <extension>). Obsolete approaches such as injecting legacy <gazebo> tags into URDF are not allowed.
 *   *Discard, not inject:* OpenUSD-native metadata (layer stacks, unselected variants) must be cleanly discarded. Injecting custom, non-standard XML elements to store unmappable OpenUSD states is not recommended. If pipeline necessitates it for practicality, such metadata must be confined to valid, format-native extension points.
 
+### 3.9 Asset Versioning
+USD has no native schema versioning. To prevent silent misinterpretation as this specification evolves, assets must declare their conformance target.
+
+**Root Prim Metadata (Required):**
+*   `int rep:versionMajor` — Incremented for breaking changes (new required APIs, layout changes, new restrictions).
+*   `int rep:versionMinor` — Incremented for additive changes (new optional APIs, relaxed constraints).
+
+**Root Prim Metadata (Optional):**
+*   `string rep:authoringTool` — Identifier of the tool that produced the asset (e.g., `"o3de-2405"`, `"urdf2usd-1.2"`).
+*   `token rep:sourceFormat` — Original format if converted: `"urdf"`, `"sdf"`, `"mjcf"`, `"native"`.
+
+**Compatibility:** Major version mismatch — consumers must warn, may refuse to load. Minor version mismatch (consumer < asset) — consumers must warn, should load. Minor version mismatch (consumer > asset) — safe.
+
 ## Tools & Reference Implementations
 A REP XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for each divergence.
 
