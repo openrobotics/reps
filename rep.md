@@ -24,6 +24,14 @@ To achieve this, the specification is concerned with three areas:
 *   **Section 2** defines novel, declarative API schemas for ROS 2 interfaces to ensure engine-agnostic runtime behavior.
 *   **Section 3** defines a strict interoperability profile to support export pathways to other formats, ensuring compatibility with standards like glTF 2.0.
 
+## Motivation 
+
+The ROS ecosystem chiefly relies on URDF and SDF for describing robots and environments. These formats are almost entirely confined to the ROS and Gazebo ecosystems. OpenUSD has emerged as an industry standard supported by a multitude of tools and allows artists to collaborate with simulation engineers without problematic conversions between variety of 3D and XML formats. Ensuring OpenUSD works well with ROS integrations across robotics simulators will increase ecosystem interoperability and strengthen ROS position in physical AI workflows such as synthetic data and generative pipelines. OpenUSD is a powerful format with an extensible architecture allowing it to capture all the semantics of other popular formats.
+
+While OpenUSD adoption is growing quickly, only the core standard specification has been ratified so far, leaving most of what's interesting for robotics uncovered. OpenUSD lacks standardized semantic representations for ROS 2 interfaces and standard rules for mapping to ROS concepts such as frames and TF trees. Because OpenUSD is powerful, it allows practices that are bound to result in low interoperability, such as proprietary extensions, defining execution instead of intent, and overfitting to particular workflows.
+
+OpenUSD is championed by the Alliance for OpenUSD (AOUSD) and the ASWF USD Working Group. NVIDIA also plays a key role both as a founding member of AOUSD and in developing OpenUSD for robotics through Omniverse, Isaac Sim and Newton. This REP builds on top of great work done by all these entities, extending it by addressing what is not yet standardized but urgently needed for OpenUSD interoperability in the ROS simulation ecosystem, and standardizing against practices that result in a vendor lock-in. As such, this REP is designed to adapt upstream standards for the ROS community, while serving as a reference to influence future decisions by AOUSD and ASWF.
+
 ## Specification
 
 The keywords "must", "must not", "required", "shall", "shall not", "should", "should not", "recommended", "may", and "optional" in this document are to be interpreted as described in RFC 2119.
