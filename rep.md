@@ -40,7 +40,9 @@ The keywords "must", "must not", "required", "shall", "shall not", "should", "sh
 
 ## 1. Simulation Assets Baseline
 
-This section confirms and standardizes prior work and recommendations for OpenUSD simulation assets. It draws from the Alliance for OpenUSD (AOUSD), the ASWF USD Working Group, and NVIDIA Asset Requirements. *Note: As AOUSD domain-specific working groups formalize physics and robotics specifications, recommendations in this section are subject to evolution and alignment.*
+This section confirms and standardizes prior work and recommendations for OpenUSD simulation assets. It draws from the Alliance for OpenUSD (AOUSD), the ASWF USD Working Group, and NVIDIA Asset Requirements. 
+
+*Note: As AOUSD domain-specific working groups formalize physics and robotics specifications, recommendations in this section are subject to evolution and alignment.*
 
 ### 1.1 Coordinate Systems & Units
 To ensure alignment with ROS standards (REP 103) and stability across solvers:
