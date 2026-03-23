@@ -105,6 +105,16 @@ Collision geometries should explicitly specify `purpose="guide"` and `physics:ap
 1.  **Baseline Approximation (Default Variant):** The default variant must contain "convexHull" or primitive shapes.
 2.  **Advanced Approximation (Optional Variant):** A secondary variant may contain high-fidelity concave trimeshes intended for Signed Distance Field (SDF) or Hydroelastic collision generation, provided the target simulator supports these paradigms.
 
+#### 1.3.2 Visual Geometry & Level of Detail
+Each link's visual and collision scopes should be organized as sibling children (e.g., `/{link}/visual`, `/{link}/collision`).
+
+To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound physics simulators (Gazebo, MuJoCo), and lightweight web viewers, assets should provide multiple geometric representations via a `visual_lod` VariantSet on the visual scope:
+1.  **High (Default Variant):** Full-fidelity source geometry. Suitable for ray-traced rendering and high-end visualization.
+2.  **Medium (Optional Variant):** Decimated geometry for real-time engines and standard simulation workloads.
+3.  **Low (Optional Variant):** Aggressively simplified for web viewers, large-scale batch simulation, and GPU-instanced scenes (e.g., Genesis).
+
+Collision meshes are not subject to visual LOD; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
+
 ---
 
 ## 2. ROS 2 Integration Schemas
