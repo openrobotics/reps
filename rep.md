@@ -86,15 +86,18 @@ OpenUSD natively enforces strict naming for Prims (they must start with a letter
 
 ### 1.3 Physics & Kinematics
 
-*   **Rigid Body Hierarchy:** Assets should utilize Logical Nesting to represent kinematic chains (e.g., `Forearm` is a child of `UpperArm`). This preserves the Scene Graph for TF tree generation and MuJoCo compatibility.
+*   **Rigid Body Hierarchy:** Assets should utilize Logical Nesting to represent kinematic chains (e.g., `Forearm` is a child of `UpperArm`). This preserves the Scene Graph for TF tree generation and ensures compatibility with parsers expecting URDF/SDF-like topologies (e.g., MuJoCo).
     *   *Simulator Responsibility:* Simulators that require flat hierarchies are responsible for flattening the graph at import time. The asset itself must remain logically nested.
 *   **Joint Placement:** While `UsdPhysicsJoint` prims rely on relational targeting (`body0` and `body1`) rather than hierarchy, asset authors should place the Joint prim as a sibling adjacent to the child link it connects, within the scope of the parent link. This ensures self-contained modularity.
 *   **Articulation Roots:** A composed simulation stage must contain at most one `PhysicsArticulationRootAPI` per connected kinematic tree. 
     *   Assets (e.g., a modular gripper) should be self-contained with an articulation root for standalone use. 
-    *   When composed into a larger kinematic tree, the composing stage should use the `delete apiSchemas` operation to prune nested articulation roots. This prevents reduced-coordinate physics solvers from fracturing the robot.
+    *   When composed into a larger kinematic tree, the composing stage should use the OpenUSD list-edit operation `delete apiSchemas = ["PhysicsArticulationRootAPI"]` to prune nested articulation roots. This prevents reduced-coordinate physics solvers from fracturing the robot.
 *   **Loop Closures:** Articulations must form a spanning tree. Joints introducing loop-closing constraints (e.g., parallel linkages) must use the newly introduced `RoboticsLoopClosureAPI` marker schema.
-*   **Mass Properties:** Dynamic bodies must have a strictly positive mass (`mass > 0`). Anchors (e.g., the base of a robot arm bolted to the floor) must have a `PhysicsRigidBodyAPI` but may define `mass = 0` (which implies infinite mass/static in many solvers). 
-    *   *Note:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `Ros2FrameAPI` as defined in Section 2.7.
+*   **Mass Properties:** Dynamic bodies must define a strictly positive mass (mass > 0). Setting mass = 0 to imply infinite/static mass violates the UsdPhysics specification, which ignores 0.0 and falls back to a computed default mass. Instead, authors must use standard mechanisms for non-dynamic bodies:
+    * Static Environments: Fixed props (e.g., walls, racks) must possess a PhysicsCollisionAPI but omit the PhysicsRigidBodyAPI. OpenUSD implicitly treats these as having zero velocity and infinite mass.
+    * Robot Anchors: A fixed robot base must have a valid mass > 0 and be anchored via a UsdPhysicsFixedJoint with an empty physics:body0 relationship (which natively represents the world).
+    * *Kinematic Bodies:* Moving bodies that are animated but not dynamically driven by physics should set the physics:kinematicEnabled attribute to true.
+    * *Dummy Frames:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `Ros2FrameAPI` as defined in Section 2.7.
 
 #### 1.3.1 Collisions & The Dual-Fidelity Pattern
 Collision geometries must explicitly specify `purpose="guide"` and `physics:approximation="none"`. To ensure assets function across both standard physics engines and advanced contact-rich solvers (e.g., Newton), assets should employ a "Dual-Fidelity Pattern" utilizing a `collision_fidelity` OpenUSD `VariantSet`:
