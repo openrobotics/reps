@@ -91,7 +91,7 @@ OpenUSD natively enforces strict naming for Prims (they must start with a letter
 *   **Rigid Body Hierarchy:** Assets should utilize Logical Nesting to represent kinematic chains (e.g., `Forearm` is a child of `UpperArm`). This preserves the Scene Graph for TF tree generation and ensures compatibility with parsers expecting URDF/SDF-like topologies (e.g., MuJoCo).
     *  Simulators that require flat hierarchies are responsible for flattening the graph at import time. The asset itself must remain logically nested.
 *   **Joint Placement:** While `UsdPhysicsJoint` prims rely on relational targeting (`body0` and `body1`) rather than hierarchy, asset authors should place the Joint prim as a sibling adjacent to the child link it connects, within the scope of the parent link. This ensures self-contained modularity.
-*   **Articulation Roots:** A composed simulation stage must contain at most one `PhysicsArticulationRootAPI` per connected kinematic tree. 
+*   **Articulation Roots:** A composed simulation stage must contain at most one `UsdPhysicsArticulationRootAPI` per connected kinematic tree. 
     *   Assets (e.g., a modular gripper) should be self-contained with an articulation root for standalone use. 
     *   When composed into a larger kinematic tree, the composing stage should use the OpenUSD list-edit operation `delete apiSchemas = ["PhysicsArticulationRootAPI"]` to prune nested articulation roots. This prevents reduced-coordinate physics solvers from fracturing the robot.
 *   **Loop Closures:** Articulations must form a spanning tree. Joints introducing loop-closing constraints (e.g., parallel linkages) must use the newly introduced `RoboticsLoopClosureAPI` marker schema.
@@ -127,9 +127,7 @@ Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by
 
 ## 2. ROS 2 Integration Schemas
 
-Neither OpenUSD nor glTF 2.0 currently standardize the specification of ROS interfaces. This section defines a set of declarative, engine-agnostic API schemas. Simulators are responsible for reading these schemas and generating their respective underlying execution logic.
-
-A Prim acts as a single logical interface. If a sensor needs multiple interfaces (e.g., `image_raw` and `camera_info`), a child prim for each interface should be utilized.
+Neither OpenUSD nor glTF 2.0 currently standardize the specification of ROS interfaces. This section defines a set of declarative, engine-agnostic API schemas (of type `SingleApply`). Simulators are responsible for reading these schemas and generating their respective underlying execution logic.
 
 ### 2.1 Schema Isolation and Functional Layering (The ETL Pipeline)
 
@@ -209,6 +207,8 @@ Instead, simulators should follow a hybrid implicit/explicit approach for broadc
 *   **Explicit TF Broadcasting (`Ros2FrameAPI`):** To publish TFs for non-physical dummy frames (e.g., a kinematic `grasp_point`, a `camera_optical_frame`), asset authors must apply the `Ros2FrameAPI` schema to the target `UsdGeomXform` Prim.
     *   `string ros2:frame:id` (Optional): Overrides the TF frame name. If omitted, the validated Prim name is used.
     *   `bool ros2:frame:static` (Optional, Default: `true`): Defines the broadcast destination. If `true`, the simulator must broadcast the frame to `/tf_static` relative to its USD parent. If `false` (e.g., an Xform animated by USD TimeSamples), it must be broadcast to `/tf`.
+
+Note: The broadcast frequency of TF frames is an implementation detail left to the simulator's runtime configuration.
 
 ### 2.9 Kinematic Loop Closures (`RoboticsLoopClosureAPI`)
 OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` or `MjcPhysics`) mechanism to identify joints that close a kinematic loop. Because many robotics simulators use reduced-coordinate (e.g., Featherstone) solvers that require strict spanning trees, parsers must know which joint to exclude from the primary tree.
