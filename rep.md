@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **REP** | XXXX |
 | **Title** | OpenUSD Conventions for Simulation Asset Interoperability |
-| **Author** | Adam Dabrowski, Mateusz Zak (Robotec.ai) |
+| **Authors** | Adam Dabrowski, Mateusz Zak (Robotec.ai) |
 | **Status** | Draft |
 | **Type** | Standards Track |
 | **Content-Type** | text/markdown |
@@ -19,16 +19,16 @@ This REP defines a standard schema and strict profile of OpenUSD (Universal Scen
 2.  **Runtime integrations** (ROS 2 Interfaces).
 3.  **Converters and web visualization** (especially glTF 2.0 conversion).
 
-To achieve this, the specification is concerned with three areas:
-*   **Section 1** ratifies existing upstream standards and recommendations (AOUSD, ASWF, NVIDIA) to establish a baseline for correct simulation assets.
+To achieve this, the specification addresses three key areas:
+*   **Section 1** adopts existing upstream standards and recommendations (AOUSD, ASWF, NVIDIA) to establish a baseline for correct simulation assets.
 *   **Section 2** defines novel, declarative API schemas for ROS 2 interfaces to ensure engine-agnostic runtime behavior.
 *   **Section 3** defines a strict interoperability profile to support export pathways to other formats, ensuring compatibility with standards like glTF 2.0.
 
 ## Motivation 
 
-The ROS ecosystem chiefly relies on URDF and SDF for describing robots and environments. These formats are almost entirely confined to the ROS and Gazebo ecosystems. OpenUSD has emerged as an industry standard supported by a multitude of tools and allows artists to collaborate with simulation engineers without problematic conversions between variety of 3D and XML formats. Ensuring OpenUSD works well with ROS integrations across robotics simulators will increase ecosystem interoperability and strengthen ROS position in physical AI workflows such as synthetic data and generative pipelines. OpenUSD is a powerful format with an extensible architecture allowing it to capture all the semantics of other popular formats.
+The ROS ecosystem chiefly relies on URDF and SDF for describing robots and environments. These formats are almost entirely confined to the ROS and Gazebo ecosystems. OpenUSD has emerged as an industry standard supported by a multitude of tools and allows artists to collaborate with simulation engineers without problematic conversions between a variety of 3D and XML formats. Ensuring OpenUSD works well with ROS integrations across robotics simulators will increase ecosystem interoperability and strengthen ROS's position in physical AI workflows such as synthetic data and generative pipelines. OpenUSD is a powerful format with an extensible architecture allowing it to capture all the semantics of other popular formats.
 
-While OpenUSD adoption is growing quickly, only the core standard specification has been ratified so far, leaving most of what's interesting for robotics uncovered. OpenUSD lacks standardized semantic representations for ROS 2 interfaces and standard rules for mapping to ROS concepts such as frames and TF trees. Because OpenUSD is powerful, it allows practices that are bound to result in low interoperability, such as proprietary extensions, defining execution instead of intent, and overfitting to particular workflows.
+While OpenUSD adoption is growing quickly, only the core standard specification has been ratified so far, leaving most of what's interesting for robotics uncovered. OpenUSD lacks standardized semantic representations for ROS 2 interfaces and standard rules for mapping to ROS concepts such as frames and TF trees. OpenUSD's flexibility also permits practices that degrade interoperability, such as proprietary extensions, defining execution instead of intent, and overfitting to particular workflows.
 
 OpenUSD is championed by the Alliance for OpenUSD (AOUSD) and the ASWF USD Working Group. NVIDIA also plays a key role both as a founding member of AOUSD and in developing OpenUSD for robotics through Omniverse, Isaac Sim and Newton. This REP builds on top of great work done by all these entities, extending it by addressing what is not yet standardized but urgently needed for OpenUSD interoperability in the ROS simulation ecosystem, and standardizing against practices that result in a vendor lock-in. As such, this REP is designed to adapt upstream standards for the ROS community, while serving as a reference to influence future decisions by AOUSD and ASWF.
 
@@ -47,8 +47,8 @@ To ensure alignment with ROS standards (REP 103) and stability across solvers:
 
 *   **Units:** All linear dimensions in the USD stage must be defined in meters, and all mass values in kilograms.
     *   `metersPerUnit` and `kilogramsPerUnit` metadata must be set to `1.0` in the root layer.
-    *   Simulators importing these assets must apply this scaling factor to all derived physical quantities (torque, stiffness, inertia) at runtime.
-*   **Up-Axis & Chirality:** The stage `upAxis` must be set to `"Z"` and follow the Right-Hand Rule.
+    *   Fallback: while interoperable assets must adhere to 1.0, simulators and converters importing general OpenUSD assets must read these metadata tokens and  apply the appropriate scaling factors to all derived spatial and physical quantities (e.g., coordinates, torque, stiffness, inertia) at load time
+*   **Up-Axis & Chirality:** The stage `upAxis` must be set to `"Z"`. Assets must follow the strict ROS Right-Handed coordinate convention: X-forward, Y-left, Z-up.
 *   **Root Transforms:** Assets must not rely on root-node rotations (e.g., `xformOp:rotateX = -90`) to align geometry. Points and normals should be transform-applied (frozen) to Z-up at the source level.
 *   **Asset Pivots:** For assets intended to be placed on the ground (e.g., warehouse racks), the root origin should be located at the bottom-center of the asset bounding box (Z=0) to facilitate predictable drag-and-drop scene composition in simulators. Mobile bases should adhere to REP 105 origin conventions.
 
@@ -60,8 +60,8 @@ This REP adopts the ASWF Guidelines for Structuring USD Assets.
 *   **Assemblies:** Aggregates (e.g., a `Warehouse` containing racks) must have `kind="assembly"` or `kind="group"`.
 *   A `component` must not contain another `component`, allowing converters to easily identify the "atomic units" of the scene.
 
-#### 1.2.2 Composition Arcs (LIVERPS Constraints)
-To guarantee that simulation assets remain self-contained, portable, and predictable across different simulator parsers, asset authors must adhere to the following constraints regarding OpenUSD's LIVERPS composition arcs:
+#### 1.2.2 Composition Arcs (LIVRPS Constraints)
+To guarantee that simulation assets remain self-contained, portable, and predictable across different simulator parsers, asset authors must adhere to the following constraints regarding OpenUSD's LIVRPS composition arcs:
 *   **[L] Local:** Primary authoring of overrides and properties on the asset is fully supported.
 *   **[I] Inherits & [S] Specializes:** Asset authors should not rely on `Inherits` or `Specializes` arcs for core robot kinematics, physics APIs, or ROS schemas when distributing standalone assets. These arcs create hard dependencies on external class hierarchies; if a simulator's environment lacks the base class definitions, the asset will fail to parse correctly.
 *   **[V] VariantSets:** Permitted and encouraged for asset reusability (see Section 1.2.3).
