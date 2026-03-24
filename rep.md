@@ -133,10 +133,11 @@ Collision geometries should explicitly specify `purpose="guide"` and `physics:ap
 #### 1.3.2 Level of Detail
 Each link's visual and collision scopes should be organized as sibling children (e.g., `/{link}/visual`, `/{link}/collision`).
 
-To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound physics simulators (Gazebo, MuJoCo), and lightweight web viewers, assets should provide multiple geometric representations via a `visual_lod` VariantSet on the visual scope:
+To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound physics simulators (Gazebo, MuJoCo), and lightweight tooling, assets should provide multiple geometric representations via a `visual_lod` VariantSet on the visual scope:
 1.  **Medium (Default Variant):** Decimated geometry for real-time engines and standard simulation workloads.
 2.  **High (Optional Variant):** Full-fidelity source geometry (e.g. CAD). Suitable for ray-traced rendering and high-end visualization.
-3.  **Low (Optional Variant):** Aggressively simplified for web viewers, large-scale batch simulation, and GPU-instanced scenes (e.g., Genesis).
+3.  **Low (Optional Variant):** Simplified for lightweight tools, large-scale batch simulation, and GPU-instanced scenes (e.g., Genesis).
+4.  **Volumetric (Optional Variant):** Advanced radiance fields, such as 3D Gaussian Splats (`UsdVolParticleField`).
 
 Collision meshes are not subject to visual LOD; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
 
@@ -230,7 +231,7 @@ OpenUSD cameras natively face the -Z axis, whereas ROS 2 optical frames (REP 103
 
 ## 3. Export and Conversion
 
-OpenUSD is a vast standard supporting complex features. To guarantee that assets can be distributed, viewed in desktop tools (e.g., `usdview`) or lightweight web tools (e.g., Foxglove, Webviz, Rerun), and successfully converted to glTF 2.0, assets must adhere to this constrained subset.
+OpenUSD is a vast standard supporting complex features. To guarantee that assets can be converted to glTF 2.0 and successfully exported to lightweight applications, assets must adhere to this constrained subset.
 
 ### 3.1 Material Portability
 *   **Normative Surface:** Assets must use UsdPreviewSurface as the normative surface definition to ensure a direct mapping to glTF 2.0's pbrMetallicRoughness workflow. Target converters may also support OpenPBR[AOUSD-OPENPBR].
@@ -243,7 +244,7 @@ To ensure native portability across OpenUSD, lightweight simulators, and glTF 2.
     *   **Data Maps:** Normal, Metallic, Roughness, and packed ORM maps must use lossless PNG. JPEG compression artifacts destructively alter PBR math.
     *   **Color Maps:** BaseColor and Emissive maps may use JPEG to reduce footprint, provided they lack an alpha channel.
 *   **KTX2** — Treat KTX2 strictly as a downstream glTF export target via `KHR_texture_basisu` glTF extension. Standard OpenUSD lacks native plugins for KTX2.
-*   **Prohibited formats:** EXR, TIFF, and other HDR/DCC formats must not be used for albedo, normal, or ORM maps in distributed assets. These formats have no glTF pathway and are unsupported by most web viewers.
+*   **Prohibited formats:** EXR, TIFF, and other HDR/DCC formats must not be used for albedo, normal, or ORM maps in distributed assets. These formats have no glTF pathway and introduce unacceptable payload overhead for lightweight tooling.
 *   **Environment**: As an exception, High Dynamic Range (.hdr) files are permitted only for UsdLuxDomeLight environment maps.
 
 ### 3.3 Texture Baking
