@@ -130,16 +130,16 @@ Collision geometries should explicitly specify `purpose="guide"` and `physics:ap
 1.  **Baseline Approximation (Default Variant):** The default variant must contain "convexHull" or primitive shapes.
 2.  **Advanced Approximation (Optional Variant):** A secondary variant may contain high-fidelity concave trimeshes intended for Signed Distance Field (SDF) or Hydroelastic collision generation, provided the target simulator supports these paradigms.
 
-#### 1.3.2 Level of Detail
+#### 1.3.2 Visual Representation
 Each link's visual and collision scopes should be organized as sibling children (e.g., `/{link}/visual`, `/{link}/collision`).
 
-To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound physics simulators (Gazebo, MuJoCo), and lightweight tooling, assets should provide multiple geometric representations via a `visual_lod` VariantSet on the visual scope:
-1.  **Medium (Default Variant):** Decimated geometry for real-time engines and standard simulation workloads.
-2.  **High (Optional Variant):** Full-fidelity source geometry (e.g. CAD). Suitable for ray-traced rendering and high-end visualization.
-3.  **Low (Optional Variant):** Simplified for lightweight tools, large-scale batch simulation, and GPU-instanced scenes (e.g., Genesis).
-4.  **Volumetric (Optional Variant):** Advanced radiance fields, such as 3D Gaussian Splats (`UsdVolParticleField`).
+To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound physics simulators (Gazebo, MuJoCo), and lightweight tooling, assets should provide multiple visual representations via a `visual_representation` VariantSet on the visual scope. This VariantSet covers both mesh fidelity tiers and alternative representation modalities.
+1.  **`mesh_medium` (Default Variant):** Decimated mesh geometry for real-time engines and standard simulation workloads.
+2.  **`mesh_high` (Optional Variant):** Full-fidelity source mesh geometry (e.g. CAD). Suitable for ray-traced rendering and high-end visualization.
+3.  **`mesh_low` (Optional Variant):** Simplified mesh for lightweight tools, large-scale batch simulation, and GPU-instanced scenes (e.g., Genesis).
+4.  **`splat_gaussian` (Optional Variant):** 3D Gaussian Splat radiance field authored using the `UsdVolParticleField3DGaussianSplat` schema (OpenUSD 26.03). Particle-based radiance field representation rendered via splatting.
 
-Collision meshes are not subject to visual LOD; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
+Collision meshes are not subject to this VariantSet; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
 
 #### 1.3.3 Contact Physics
 To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding. Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
