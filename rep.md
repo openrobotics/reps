@@ -137,7 +137,7 @@ To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound
 1.  **`mesh_medium` (Default Variant):** Decimated mesh geometry for real-time engines and standard simulation workloads.
 2.  **`mesh_high` (Optional Variant):** Full-fidelity source mesh geometry (e.g. CAD). Suitable for ray-traced rendering and high-end visualization.
 3.  **`mesh_low` (Optional Variant):** Simplified mesh for lightweight tools, large-scale batch simulation, and GPU-instanced scenes (e.g., Genesis).
-4.  **`splat_gaussian` (Optional Variant):** 3D Gaussian Splat radiance field authored using the `UsdVolParticleField3DGaussianSplat` schema (OpenUSD 26.03). Particle-based radiance field representation rendered via splatting.
+4.  **`volumetric_splat` (Optional Variant):** 3D Gaussian Splat radiance field authored using the `UsdVolParticleField3DGaussianSplat` schema (OpenUSD 26.03).
 
 Collision meshes are not subject to this VariantSet; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
 
