@@ -116,7 +116,7 @@ OpenUSD's native instancing mechanisms are designed for repetitive visual and st
 *   **Articulation Roots:** A composed simulation stage must contain at most one `UsdPhysicsArticulationRootAPI` per connected kinematic tree. 
     *   Assets (e.g., a modular gripper) should be self-contained with an articulation root for standalone use. 
     *   When composed into a larger kinematic tree, the composing stage should use the OpenUSD list-edit operation `delete apiSchemas = ["PhysicsArticulationRootAPI"]` to prune nested articulation roots. This prevents reduced-coordinate physics solvers from fracturing the robot.
-*   **Loop Closures:** Articulations must form a spanning tree. Joints introducing loop-closing constraints (e.g., parallel linkages) must use the newly introduced `RoboticsLoopClosureAPI` marker schema.
+*   **Loop Closures:** Articulations must form a spanning tree. Joints introducing loop-closing constraints (e.g., parallel linkages) must set `physics:excludeFromArticulation = true` (see Section 1.3.4).
 *   **Mass Properties:** Assets and simulators must follow `UsdPhysicsMassAPI` guidelines. Dynamic bodies must define a strictly positive mass (mass > 0). Setting mass = 0 to imply infinite/static mass violates the UsdPhysics specification, which ignores 0.0 and falls back to a computed default mass. Instead, authors must use standard mechanisms for non-dynamic bodies:
     * Static Environments: Fixed props (e.g., walls, racks) must possess a PhysicsCollisionAPI but omit the PhysicsRigidBodyAPI. OpenUSD implicitly treats these as having zero velocity and infinite mass.
     * Robot Anchors: A fixed robot base must have a valid mass > 0 and be anchored via a UsdPhysicsFixedJoint with an empty physics:body0 relationship (which natively represents the world).
@@ -144,10 +144,10 @@ Collision meshes are not subject to this VariantSet; their fidelity is governed 
 #### 1.3.3 Contact Physics
 To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding. Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
 
-#### 1.3.4 Kinematic Loop Closures (`RoboticsLoopClosureAPI`)
-OpenUSD `UsdPhysics` currently lacks a vendor-neutral (e.g., not `PhysxSchema` or `MjcPhysics`) mechanism to identify joints that close a kinematic loop. Because many robotics simulators use reduced-coordinate (e.g., Featherstone) solvers that require strict spanning trees, parsers must know which joint to exclude from the primary tree.
-*   **Schema Application:** Asset authors must apply the `RoboticsLoopClosureAPI` to any `UsdPhysicsJoint` that closes a kinematic loop.
-*   **Parser Responsibility:** Parsers traversing the `body0`/`body1` relationships to build the kinematic tree must prune their traversal when encountering this schema, handling the joint as a standalone constraint rather than a parent-child hierarchical link.
+#### 1.3.4 Kinematic Loop Closures (`physics:excludeFromArticulation`)
+OpenUSD `UsdPhysics` provides a vendor-neutral mechanism to identify joints that should be excluded from reduced-coordinate articulations: the `physics:excludeFromArticulation` attribute on `UsdPhysicsJoint`. Because many robotics simulators use reduced-coordinate (e.g., Featherstone) solvers that require strict spanning trees, parsers must know which joint to exclude from the primary tree.
+*   **Attribute Usage:** Asset authors must set `physics:excludeFromArticulation = true` on any `UsdPhysicsJoint` that closes a kinematic loop.
+*   **Parser Responsibility:** Parsers traversing the `body0`/`body1` relationships to build the kinematic tree must prune their traversal when encountering this flag, handling the joint as a standalone constraint rather than a parent-child hierarchical link.
 
 
 ### 1.4 Isolation of vendor-specific extensions
