@@ -2,7 +2,7 @@
 (
     "ROS 2 Integration Schemas for OpenUSD Simulation Asset Interoperability."
     " Defines declarative, engine-agnostic API schemas for ROS 2 interfaces"
-    " as specified in REP-2040, Section 2."
+    " as specified in REP-XXXX, Section 2."
     subLayers = [
         @usd/schema.usda@
     ]
