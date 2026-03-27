@@ -1,0 +1,344 @@
+#usda 1.0
+(
+    "ROS 2 Integration Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic API schemas for ROS 2 interfaces"
+    " as specified in REP-2040, Section 2."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdRos2"
+        string libraryPath       = "usdRos2"
+        string libraryPrefix     = "UsdRos2"
+        dictionary libraryTokens = {
+            # --- Role tokens (shared by Topic, Service, Action) ---
+            dictionary publisher = {
+                string doc = """Role token indicating the interface is a publisher."""
+            }
+            dictionary subscription = {
+                string doc = """Role token indicating the interface is a subscription."""
+            }
+            dictionary server = {
+                string doc = """Role token indicating the interface is a server."""
+            }
+            dictionary client = {
+                string doc = """Role token indicating the interface is a client."""
+            }
+
+            # --- QoS tokens ---
+            dictionary system_default = {
+                string doc = """QoS policy value deferring to the ROS 2 system default."""
+            }
+            dictionary reliable = {
+                string doc = """QoS reliability policy requesting reliable delivery."""
+            }
+            dictionary best_effort = {
+                string doc = """QoS reliability policy requesting best-effort delivery."""
+            }
+            dictionary transient_local = {
+                string doc = """QoS durability policy requesting transient-local
+                storage of messages for late-joining subscriptions."""
+            }
+            dictionary volatile_ = {
+                string value = "volatile"
+                string doc = """QoS durability policy requesting volatile (no persistence)."""
+            }
+            dictionary keep_last = {
+                string doc = """QoS history policy keeping only the last N messages."""
+            }
+            dictionary keep_all = {
+                string doc = """QoS history policy keeping all messages."""
+            }
+
+            # --- Frame tokens ---
+            dictionary world = {
+                string doc = """Default parent frame for the top-most Ros2ContextAPI."""
+            }
+        }
+    }
+)
+{
+}
+
+# ======================================================================
+# Section 2.1 - Ros2ContextAPI
+# ======================================================================
+
+class "Ros2ContextAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "ContextAPI"
+    }
+    doc = """Defines the ROS 2 context for a simulation asset.
+
+    The root prim of a ROS-interfaced simulation asset may apply this
+    schema to define its namespace and optionally override the DDS
+    domain ID. The namespace is additive in the asset hierarchy and
+    with a top-level namespace set during simulation deployment
+    (e.g. via the SpawnEntity service).
+    """
+)
+{
+    uniform string ros2:context:namespace (
+        customData = {
+            string apiName = "namespace"
+        }
+        doc = """Prefixes all topics within this scope (e.g. '/robot_1').
+        The namespace is additive in the asset hierarchy."""
+    )
+
+    uniform int ros2:context:domain_id (
+        customData = {
+            string apiName = "domainId"
+        }
+        doc = """Overrides the default ROS Domain ID for interfaces
+        descending from this context."""
+    )
+
+    uniform string ros2:context:parent_frame = "world" (
+        customData = {
+            string apiName = "parentFrame"
+        }
+        doc = """Defines the parent frame_id used when the simulator
+        broadcasts the ground-truth transform of this context's root
+        prim. Only valid for the top-most context in the resolved USD
+        Stage and ignored otherwise."""
+    )
+}
+
+# ======================================================================
+# Section 2.4 - Ros2TopicAPI
+# ======================================================================
+
+class "Ros2TopicAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "TopicAPI"
+    }
+    doc = """Applied to prims exchanging streaming ROS 2 data.
+
+    Simulators spawn the corresponding publisher or subscription at
+    runtime. Robot-wide interfaces go on or beneath the Ros2ContextAPI
+    prim; sensor interfaces go on a child Xform of the physical link,
+    one interface per prim. Interface prims must reside outside payloads
+    and do not generate TF frames.
+    """
+)
+{
+    # ------------------------------------------------------------------
+    # Core Attributes (Required)
+    # ------------------------------------------------------------------
+
+    uniform token ros2:topic:role (
+        customData = {
+            string apiName = "role"
+        }
+        allowedTokens = ["publisher", "subscription"]
+        doc = """Defines whether this interface acts as a publisher or a
+        subscription."""
+    )
+
+    uniform string ros2:topic:name (
+        customData = {
+            string apiName = "name"
+        }
+        doc = """The topic name, relative to the active ROS 2 namespace
+        inherited from the nearest ancestor Ros2ContextAPI. Must adhere
+        to ROS 2 topic naming rules (alphanumeric, underscores, and
+        forward slashes only; cannot start with a number)."""
+    )
+
+    uniform string ros2:topic:type (
+        customData = {
+            string apiName = "type"
+        }
+        doc = """The ROS 2 message type string (e.g. 'sensor_msgs/msg/Image').
+        Simulators must attempt to resolve this type dynamically against the
+        sourced ROS 2 environment. If the type is not found, the simulator
+        must safely disable this interface and emit a warning."""
+    )
+
+    uniform double ros2:topic:publish_rate (
+        customData = {
+            string apiName = "publishRate"
+        }
+        doc = """Target publication frequency in Hz. Required for publishers;
+        ignored for subscriptions."""
+    )
+
+    # ------------------------------------------------------------------
+    # Quality of Service (QoS) Attributes
+    # ------------------------------------------------------------------
+
+    uniform bool ros2:topic:qos:match_publisher = false (
+        customData = {
+            string apiName = "qosMatchPublisher"
+        }
+        doc = """For subscriptions only. If true, the simulator bridge must
+        attempt to use ROS 2 QoS matching to adapt to the discovered
+        publisher, ignoring explicit reliability and durability settings."""
+    )
+
+    uniform token ros2:topic:qos:reliability = "system_default" (
+        customData = {
+            string apiName = "qosReliability"
+        }
+        allowedTokens = ["system_default", "reliable", "best_effort"]
+        doc = """Maps to rmw_qos_profile_t reliability policy. As per
+        REP 2003, simulated sensors should default to 'system_default'
+        which maps to best-effort."""
+    )
+
+    uniform token ros2:topic:qos:durability = "system_default" (
+        customData = {
+            string apiName = "qosDurability"
+        }
+        allowedTokens = ["system_default", "transient_local", "volatile"]
+        doc = """Maps to rmw_qos_profile_t durability policy. Map
+        publishers should use 'transient_local'."""
+    )
+
+    uniform token ros2:topic:qos:history = "system_default" (
+        customData = {
+            string apiName = "qosHistory"
+        }
+        allowedTokens = ["system_default", "keep_last", "keep_all"]
+        doc = """Maps to rmw_qos_profile_t history policy."""
+    )
+
+    uniform int ros2:topic:qos:depth = 10 (
+        customData = {
+            string apiName = "qosDepth"
+        }
+        doc = """Queue size. Evaluated only when history is 'keep_last'."""
+    )
+}
+
+# ======================================================================
+# Section 2.5 - Ros2ServiceAPI
+# ======================================================================
+
+class "Ros2ServiceAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "ServiceAPI"
+    }
+    doc = """Applied to prims handling synchronous ROS 2 requests.
+
+    Simulators spawn the corresponding server or client at runtime.
+    Same placement, resolution, and TF exclusion rules as Ros2TopicAPI.
+    """
+)
+{
+    uniform token ros2:service:role (
+        customData = {
+            string apiName = "role"
+        }
+        allowedTokens = ["server", "client"]
+        doc = """Defines whether this interface acts as a server or a
+        client. Simulation assets are typically servers."""
+    )
+
+    uniform string ros2:service:name (
+        customData = {
+            string apiName = "name"
+        }
+        doc = """The service name, relative to the active ROS 2 namespace.
+        Must adhere to ROS 2 naming rules."""
+    )
+
+    uniform string ros2:service:type (
+        customData = {
+            string apiName = "type"
+        }
+        doc = """The ROS 2 service type (e.g. 'std_srvs/srv/SetBool').
+        Simulators must resolve dynamically; disable on failure."""
+    )
+}
+
+# ======================================================================
+# Section 2.6 - Ros2ActionAPI
+# ======================================================================
+
+class "Ros2ActionAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "ActionAPI"
+    }
+    doc = """Applied to prims handling asynchronous, long-running ROS 2 behaviors.
+
+    Simulators spawn the corresponding server or client at runtime.
+    Same placement, resolution, and TF exclusion rules as Ros2TopicAPI.
+    """
+)
+{
+    uniform token ros2:action:role (
+        customData = {
+            string apiName = "role"
+        }
+        allowedTokens = ["server", "client"]
+        doc = """Defines whether this interface acts as a server or a
+        client. Simulation assets are typically servers."""
+    )
+
+    uniform string ros2:action:name (
+        customData = {
+            string apiName = "name"
+        }
+        doc = """The action name, relative to the active ROS 2 namespace.
+        Must adhere to ROS 2 naming rules."""
+    )
+
+    uniform string ros2:action:type (
+        customData = {
+            string apiName = "type"
+        }
+        doc = """The ROS 2 action type
+        (e.g. 'control_msgs/action/FollowJointTrajectory').
+        Simulators must resolve dynamically; disable on failure."""
+    )
+}
+
+# ======================================================================
+# Section 2.7 - Ros2FrameAPI
+# ======================================================================
+
+class "Ros2FrameAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "FrameAPI"
+    }
+    doc = """Explicit TF frame broadcasting for non-physical dummy frames.
+
+    Apply this schema to UsdGeomXform prims that need TF frames but do
+    not possess a PhysicsRigidBodyAPI (e.g. camera_optical_frame,
+    grasp_point). Physical links connected via joints get implicit TF
+    broadcasting and do not need this schema.
+    """
+)
+{
+    uniform string ros2:frame:id (
+        customData = {
+            string apiName = "id"
+        }
+        doc = """Overrides the TF frame name. If omitted, the validated
+        Prim name is used as the frame_id."""
+    )
+
+    uniform bool ros2:frame:static = true (
+        customData = {
+            string apiName = "static"
+        }
+        doc = """Defines the broadcast destination. If true, the simulator
+        broadcasts to /tf_static. If false (e.g. an Xform animated by
+        USD TimeSamples), the simulator broadcasts to /tf."""
+    )
+}
