@@ -68,10 +68,14 @@ This REP endorses the ETL composition architecture developed collaboratively by 
 
 As illustrated in Figure 1, assets should be divided into functional layers composed via References and Payloads:
 
-*   **Asset Source & Transformation (The Base Layer):** The raw CAD data (`asset_base.usd`) is optimized into simulation-ready geometry (`asset_sim_optimized.usd`). This layer contains native OpenUSD schemas (`UsdGeom`, `UsdShade`).
+*   **Asset Source & Transformation (The Base Layer):** The raw (e.g. CAD) data is optimized and decomposed into granular, functional files to maximize deduplication and performance. This layer contains core native OpenUSD schemas and should be structured as follows:
+    *   `geometries.usd`: Contains pure mesh topology and vertices (no physics, no schemas). Most geometries should use the binary format (`.usdc`).
+    *   `materials.usd`: Contains pure material definitions (`UsdShade`) and look-dev.
+    *   `instances.usd` (Optional, recommended): Assembles geometries and materials via references.
+    *   `base.usd`: The pure kinematic hierarchy (Xforms), referencing the underlying instances and geometries without physical or execution logic.
 *   **Features (The Domain-Specific Layers):** Domain metadata is isolated into specific overlay files that reference the Base Layer. For example, `asset_physics.usd` contains the rigid bodies and joints, while `asset_ros.usd` contains the `Ros2*API` schemas defined in this REP.
 *   **Entry Point (`asset.usd`):** The final distributed asset is a lightweight interface layer that uses **Payloads** to load the Features. 
-*   **Proprietary Layer:** Asset authors should avoid including heavy, simulator-specific implementations (e.g., proprietary execution graphs) within the interoperable asset package. If unavoidable, they must minimize this proprietary layer (e.g., `asset_isaac.usd`) to what is strictly necessary and keep it isolated as a separate Feature layer.
+*   **Proprietary Layer:** Asset authors should avoid including heavy, simulator-specific implementations (e.g., proprietary execution graphs) within the interoperable asset package. If unavoidable, they must minimize this proprietary layer (e.g., `isaac.usd`, `o3de.usd`) to what is strictly necessary and keep it isolated as a separate Feature layer.
 
 
 #### 1.2.2 The Composition Model
@@ -149,8 +153,12 @@ Collision meshes are not subject to this VariantSet; their fidelity is governed 
 #### 1.3.3 Contact Physics
 To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding. Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
 
-### 1.4 Isolation of vendor-specific extensions
-Engine-specific parameters (e.g., solver iterations, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., mujoco:, isaac:). This applies to both formal vendor-supplied API schemas and ad-hoc custom attributes. This proprietary metadata must be strictly isolated within the ETL Pipeline's "Proprietary Layer" (Section 1.2.1) and never authored in the baseline simulation payload. Authors must strive to minimize proprietary layer to strictly necessary.
+### 1.4 Isolation of vendor and physics specific extensions
+
+To guarantee interoperability across different solvers, physical properties and engine-specific parameters must be explicitly decoupled into separate functional layers:
+
+*   **Neutral Physics (`physics.usd`):** A universally shared layer containing exclusively core `UsdPhysics` schemas (rigid bodies, joints, limits, mass properties). This file must strictly adhere to the standard OpenUSD Physics specification and must not contain any vendor-specific extensions.
+*   **Engine Tuning (`physx.usd`, `mujoco.usd`, `isaac.usd`):** Engine-specific parameters (e.g., proprietary solver iterations, specialized friction models, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., `mujoco:`, `isaac:`). These must be strictly isolated within discrete "Proprietary Layers" (Section 1.2.1) and never authored in the baseline simulation payload or neutral physics layer. Authors must strive to minimize this proprietary layer to what is strictly necessary.
 
 ---
 
