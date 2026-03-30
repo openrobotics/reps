@@ -19,10 +19,11 @@ This REP defines a standard schema and strict profile of OpenUSD (Universal Scen
 2.  **Runtime integrations** (ROS Interfaces).
 3.  **Converters and web visualization** (especially glTF 2.0 conversion).
 
-To achieve this, the specification addresses three key areas:
+To achieve this, the specification addresses four key areas:
 *   **Section 1** adopts existing upstream standards and recommendations (AOUSD, ASWF, NVIDIA) to establish a baseline for correct simulation assets.
 *   **Section 2** defines novel, declarative API schemas for ROS interfaces to ensure engine-agnostic runtime behavior.
 *   **Section 3** defines a strict interoperability profile to support export pathways to other formats, ensuring compatibility with standards like glTF 2.0.
+*   **Section 4** defines schemas for robot control, covering both low-level joint identification and high-level application-level controllers.
 
 ## Motivation 
 
@@ -238,12 +239,20 @@ Note: The broadcast frequency of TF frames is an implementation detail left to t
 ### 2.8 Optical Frames
 OpenUSD cameras natively face the -Z axis, whereas ROS optical frames (REP 103) must face +Z. To bridge this without opaque simulator-side rotations, authors must decouple the physical sensor from its optical interface. Authors must create a child UsdGeomXform (e.g., `camera_optical_frame`) rotated 180 degrees around its local X-axis. All RosTopicAPI and RosFrameAPI schemas must be applied exclusively to this optical frame, ensuring deterministic data orientation in RViz.
 
+<<<<<<< HEAD
 ### 2.9 Prohibited Interfaces
 
 Simulator-level interfaces are prohibited in assets to avoid clashes, including:
 
 *   `/clock` topic (`rosgraph_msgs/msg/Clock` interface) for simulation time.
 *   Any interfaces included in the `simulation_interfaces` package (e.g. spawning, simulation control).
+=======
+### 2.9 Joint Identification and Interoperability (ROS2JointAPI)
+
+Applies to prims that possess a `PhysicsJointAPI` and are part of a kinematic chain of the robot.
+Used to identify and map joints between an imported scene and ROS-native concepts such as robot descriptions. This API enables one-to-one mapping between joints controlled by the ROS 2 control framework.
+*   `string ros2:joint:name`: The name of the joint (without namespace).
+>>>>>>> 032622a (Added 4th section regarding robot control.)
 
 ---
 
@@ -298,6 +307,98 @@ OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched 
 *   **Payload Resolution:** The active simulation payload (kinematics, inertia, colliders) is the extraction priority. OpenUSD composition arcs and instance proxies must be fully baked into explicit geometry and transforms, never discarded.
 *   **API Translation:** Ros*API schemas must map exclusively to modern extension blocks (e.g., SDF `<plugin>`, MJCF `<extension>`). Obsolete approaches such as injecting legacy `<gazebo>` tags into URDF are not allowed.
 *   **Discard, not inject:** OpenUSD-native metadata (layer stacks, unselected variants) must be cleanly discarded. Injecting custom, non-standard XML elements to store unmappable OpenUSD states is not recommended. If pipeline necessitates it for practicality, such metadata must be confined to valid, format-native extension points.
+
+## 4. Robot Control
+
+In robotic simulation there are two approaches to simulating a robotic system — application level and control level simulation.
+
+In control level simulation, the focus is on the individual components and their interactions. 
+This approach is often used for low-level control and real-time feedback, allowing for more precise manipulation of the robot's movements and behaviors. In this context, the simulator exposes 
+a set of endpoints for controlling and monitoring the individual components of the robot and their control and state interfaces.
+
+In application level simulation, the simulator simulates the robot as a whole, including its physical properties, kinematics, and dynamics.
+This approach is often used for high-level planning and interaction with the environment. 
+It simplifies the process of simulating multi-robot scenarios.
+
+### 4.1 Control Interfaces
+
+The control interface uses ROS2JointAPI for controllable joint identification and the interface to be used with the control framework. 
+The shape and form of the interface that the simulator exposes to the control framework is not the scope of this REP and is simulator specific.
+
+### 4.2 Application Simulation
+ROS2ControlAPI allows instantiating robot controllers directly in the simulated scene.
+It must reference one or more prims that have [ROS2TopicAPI](#24-topic-interface-ros2topicapi), [ROS2ServiceAPI](#25-service-interface-ros2serviceapi) or [ROS2ActionAPI](#26-action-interface-ros2actionapi).
+This schema is to be included as a built-in schema via `prepend apiSchemas` by a simulator-specific controller schema in the simulator.
+Example can be `simulatorXYZ::CustomROS2RigidBodyTwistControllerAPI` which will include as built-in `ROS2ControlAPI` and reference prims:
+- `ROS2TopicAPI` for subscription of control message.
+- `PhysicsRigidBodyAPI` for interaction with the physics engine.
+
+USD does not enforce API schema constraints on referenced prims at the  schema definition level. It is the responsibility of the simulator to validate that all prims referenced by ROS2ControlAPI have at least one of the following API schemas applied: `ROS2TopicAPI`, `ROS2ServiceAPI` or `ROS2ActionAPI`. 
+### 4.2.1 Built-in Controllers
+
+The following schemas are built-in controller schemas that include 
+`ROS2ControlAPI` as a built-in via `prepend apiSchemas`. 
+Simulators may implement these schemas to provide a standardized 
+control interface for common use cases.
+
+#### 4.2.1.1 ROS2RigidBodyTwistControllerAPI
+
+Controls a rigid body by subscribing to a `geometry_msgs/Twist` message
+and applying the commanded linear and angular velocities directly to the
+physics engine.
+
+- `rel ros2:rigid_body_twist:cmd_vel`: Reference to a prim with `ROS2TopicAPI` 
+  for subscribing to twist control messages.
+- `rel ros2:rigid_body_twist:body`: Reference to a prim with 
+  `UsdPhysicsRigidBodyAPI` for applying velocities.
+
+- `double ros2:rigid_body_twist:cmd_vel_timeout`: Timeout in seconds after 
+  which the command is considered stale. Default: `0.5`.
+- `double ros2:rigid_body_twist:linear:x:max_velocity`: Maximum linear velocity in m/s.
+- `double ros2:rigid_body_twist:linear:x:max_acceleration`: Maximum linear acceleration in m/s².
+- `double ros2:rigid_body_twist:angular:z:max_velocity`: Maximum angular velocity in rad/s.
+- `double ros2:rigid_body_twist:angular:z:max_acceleration`: Maximum angular acceleration in rad/s².
+
+#### 4.2.1.2 ROS2DiffDriveControllerAPI
+
+Controls a differential drive robot by subscribing to a
+`geometry_msgs/Twist` message and converting the commanded linear
+and angular velocities into individual wheel velocities applied
+to the simulator joints.
+
+- `rel ros2:diff_drive:cmd_vel`: Reference to prim with `ROS2TopicAPI` for subscribing to velocity commands.
+- `rel ros2:diff_drive:odom`: Reference to prim with `ROS2TopicAPI` for publishing odometry data.
+- `rel[] ros2:diff_drive:left_wheels`: References to prims with `UsdPhysicsDriveAPI` representing left wheel joints.
+- `rel[] ros2:diff_drive:right_wheels`: References to prims with `UsdPhysicsDriveAPI` representing right wheel joints.
+- `double ros2:diff_drive:wheel_separation`: Distance between left and right wheels in meters.
+- `double ros2:diff_drive:wheel_radius`: Radius of the wheels in meters.
+- `double ros2:diff_drive:cmd_vel_timeout`: Timeout in seconds after which the command is considered stale. Default: `0.5`.
+- `double ros2:diff_drive:linear:x:max_velocity`: Maximum linear velocity in m/s.
+- `double ros2:diff_drive:linear:x:max_acceleration`: Maximum linear acceleration in m/s².
+- `double ros2:diff_drive:angular:z:max_velocity`: Maximum angular velocity in rad/s.
+- `double ros2:diff_drive:angular:z:max_acceleration`: Maximum angular acceleration in rad/s².
+
+#### 4.2.1.3 ROS2JointTrajectoryControllerAPI
+
+Executes a joint trajectory by accepting a
+`control_msgs/FollowJointTrajectory` action goal and commanding
+the simulator to follow the specified trajectory.
+
+**Relationships (Required):**
+- `rel ros2:joint_trajectory:server`: Reference to a prim with `ROS2ActionAPI` 
+  for receiving trajectory action goals.
+- `rel[] ros2:joint_trajectory:joints`: References to prims with
+  `PhysicsJointAPI` and `ROS2JointAPI` representing the joints
+  to be controlled.
+
+**Core Attributes (Optional):**
+- `double ros2:joint_trajectory:action_monitor_rate`: Frequency in Hz for 
+  monitoring trajectory execution progress.
+- `double ros2:joint_trajectory:stopped_velocity_tolerance`: Velocity tolerance 
+  at the end of the trajectory that indicates the controlled system has stopped.
+- `double ros2:joint_trajectory:goal_time`: Maximum time allowed to reach 
+  the trajectory goal.
+
 
 ## Tools
 
