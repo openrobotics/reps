@@ -261,7 +261,7 @@ Procedural texture graphs (noise generation, math nodes, node graphs) are not in
 
 ### 3.4 Geometry Constraints
 *   **Triangulation:** Collision meshes must be explicitly triangulated by the author. Visual meshes may use quads or n-gons, but converters targeting glTF 2.0 must triangulate all geometry at export time.
-*   **Face Orientation:** Meshes must use `orientation = "rightHanded"` (the OpenUSD default), which defines counter-clockwise vertex winding as front-facing. This aligns with glTF 2.0's mandatory CCW front faces. Converters importing from clockwise-oriented sources must rewind vertex indices rather than setting `orientation = "leftHanded"`. Assets must not rely on `doubleSided = true` to mask incorrect winding.
+*   **Face Orientation:** Meshes must use `orientation = "rightHanded"` (the OpenUSD default), which defines counter-clockwise vertex winding as front-facing. This aligns with glTF 2.0's mandatory CCW front faces. Assets must not rely on `doubleSided = true` to mask incorrect winding.
 *   **Manifold topology:** Collision meshes must be watertight (closed, manifold) and free of self-intersections to ensure stable physics and mass derivation. Non-manifold geometry (e.g., open edges) is strictly limited to purely visual meshes.
 
 ### 3.5 Instanceable Leaves
