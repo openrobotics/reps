@@ -104,10 +104,7 @@ OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., e
 *   **Native Composition vs. Custom Prefabs:** The use of custom or vendor-specific string attributes (e.g., `custom string my_sim:prefabPath = "robot.usd"`) to dynamically load, instantiate, or compose assets at runtime is strictly prohibited for interoperable assets. Asset composition must rely purely on native OpenUSD references or payloads.
 *   **FileFormat Plugins:** OpenUSD supports FileFormat plugins (e.g., MuJoCo's `usdMjcf` plugin) to dynamically translate legacy formats into USD stages at runtime. While these plugins are recommended for import pathways, this REP governs the *resulting in-memory OpenUSD data*. Plugins interfacing with the ROS 2 ecosystem must generate stages that conform to the physical hierarchies and API schemas defined in this document.
 
-#### 1.2.6 ROS-Compatible Identifiers
-OpenUSD natively enforces strict naming for Prims (they must start with a letter or underscore, followed by alphanumeric characters or underscores: [a-zA-Z_][a-zA-Z0-9_]*). This natively aligns with ROS conventions. Furthermore, Prim names intended to map directly to ROS TF Frames must not contain spaces or special characters that could violate downstream ROS 2 lexical rules.
-
-#### 1.2.7 Parallel Simulation and Instancing
+#### 1.2.6 Parallel Simulation and Instancing
 OpenUSD's native instancing mechanisms are designed for repetitive visual and structural geometry. They must not be used to clone articulated physics assets to create massive parallel arrays (e.g., for reinforcement learning).
 *    **Canonical Assets:** Authors must distribute a single, self-contained canonical environment.
 *    **Runtime Delegation:** Simulators supporting massive parallelism are expected to handle environment replication natively at runtime via their own APIs. Authors must not bake thousands of physics-enabled clones into the source file.
