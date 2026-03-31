@@ -148,11 +148,7 @@ To ensure assets function across high-end renderers (Isaac Sim, O3DE), CPU-bound
 Collision meshes are not subject to this VariantSet; their fidelity is governed by the `collision_fidelity` VariantSet (Section 1.3.1).
 
 #### 1.3.3 Self-Collision Filtering
-`UsdPhysicsJoint` disables collisions between its connected links by default (`physics:collisionEnabled = false`). Non-adjacent links are not covered by this mechanism and require explicit filtering:
-*   **`UsdPhysicsCollisionGroup`** (recommended): Assets should define a collision group that references itself via `physics:filteredGroups` to disable all intra-robot collisions. Since both collection membership and filtered group targets are relationships, composition automatically remaps them per instance. Where selective self-collision is required, assets may use multiple groups with targeted filtering.
-*   **`UsdPhysicsFilteredPairsAPI`**: May be used for fine-grained pairwise exceptions. Takes precedence over group filtering.
-
-Baseline collision filtering must use standard `UsdPhysics` schemas. Engine-specific mechanisms (e.g., PhysX filter shaders, MuJoCo `contype`/`conaffinity`) may augment but must not replace this baseline, and must be isolated in the vendor-specific layer (Section 1.4).
+`UsdPhysicsJoint` disables collisions between its connected links by default (`physics:collisionEnabled = false`). Assets should use `UsdPhysicsCollisionGroup` to define collision group filtering and may use `UsdPhysicsFilteredPairsAPI` for fine-grained exceptions.
 
 #### 1.3.4 Contact Physics
 To ensure deterministic contact dynamics across engines, authors must bind a `UsdShadeMaterial` bearing the `UsdPhysicsMaterialAPI` to collision geometries. This material must define `physics:staticFriction`, `physics:dynamicFriction`, and `physics:restitution`. To prevent conflicts with visual shading networks, the physical material must be bound to the collision geometry explicitly using the physics material purpose (`material:binding:physics`), rather than the default all-purpose binding. Because engines utilize distinct friction models, converters must approximate these baseline values into their specific representations (e.g., SDF `<surface>` or MJCF `<friction>`).
