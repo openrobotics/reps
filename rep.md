@@ -240,6 +240,13 @@ Note: The broadcast frequency of TF frames is an implementation detail left to t
 ### 2.8 Optical Frames
 OpenUSD cameras natively face the -Z axis, whereas ROS optical frames (REP 103) must face +Z. To bridge this without opaque simulator-side rotations, authors must decouple the physical sensor from its optical interface. Authors must create a child UsdGeomXform (e.g., `camera_optical_frame`) rotated 180 degrees around its local X-axis. All RosTopicAPI and RosFrameAPI schemas must be applied exclusively to this optical frame, ensuring deterministic data orientation in RViz.
 
+### 2.9 Simulation Clock
+
+ROS nodes synchronize with simulation time by subscribing to `/clock` and setting `use_sim_time = true`. To ensure all ROS consumers (RViz, Nav2, sensor processors) agree on a common simulation timeline:
+
+*   The clock is a simulator-level concern. Asset USD files must not contain a `RosTopicAPI` prim that publishes to `/clock` as doing so would produce duplicate or conflicting clock sources when multiple assets are composed.
+*   Compliant simulators must publish simulation time on the absolute `/clock` topic using `rosgraph_msgs/msg/Clock` from the moment simulation begins playing until it is stopped.
+
 ---
 
 ## 3. Export and Conversion
