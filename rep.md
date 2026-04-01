@@ -172,9 +172,30 @@ Neither OpenUSD nor glTF 2.0 currently standardize the specification of ROS inte
 
 ### 2.1 The ROS Context (`RosContextAPI`)
 The root prim of a ROS-interfaced simulation asset may define its context namespace.
-*   `string ros:context:namespace`: Prefixes all topics within this scope (e.g., `/robot_1`). The namespace is additive in the asset hierarchy and with a top-level namespace set during simulation deployment (e.g., via the `SpawnEntity` service).
+*   `string ros:context:namespace`: Prefixes all topics within this scope (e.g., `/robot_1`). Multiple values across the hierarchy are concatenated. See Section 2.1.1 for full rules.
 *   `int ros:context:domain_id` (Optional): Overrides the default ROS Domain ID for interfaces descending from this context.
 *   `string ros:context:parent_frame` (Optional, Default: `"world"`): Defines the parent `frame_id` used when the simulator broadcasts the ground-truth transform of this context's root prim. It is only valid for the top-most context in the resolved USD Stage and ignored otherwise.
+
+#### 2.1.1 Hierarchical Namespace Concatenation
+
+`RosContextAPI` may be applied at multiple levels of the USD hierarchy; not necessarily just the robot's root prim. This enables per-sensor and per-module sub-namespacing within a single asset without manual per-interface configuration.
+
+Simulators must concatenate all `ros:context:namespace` values found on an interface prim's ancestor chain (in top-down order, from the stage root to the interface prim itself) to form the fully-resolved namespace for that interface:
+*   Each non-empty `ros:context:namespace` segment contributes one path component. Simulators must insert a `/` separator between segments and normalize the result (e.g., segments `"robot_1"` and `"left_camera"` produce the namespace `/robot_1/left_camera`).
+*   An absent or empty-string `ros:context:namespace` contributes no segment.
+*   Any runtime namespace injected at deployment time (e.g., via the `/spawn_entity` service's `entity_namespace` field) is prepended as the outermost segment, before any namespace authored in the USD file.
+
+**TF topic names:** TF frames for all joints and links within one robot must be published on a single, robot-level topic. The `/tf` and `/tf_static` topic names are scoped using **only** the namespace from the outermost `RosContextAPI` ancestor of the robot's root prim. Sub-namespace segments from deeper `RosContextAPI` prims must not be appended to the TF topic name. TF frame IDs within the tree are unaffected by sub-namespace authoring.
+
+**Multi-robot deployment:** When the same asset is instantiated more than once in a stage (e.g., a fleet of identical mobile robots), each instance's root prim must carry a unique `ros:context:namespace` value. The recommended convention is to use the instance's stage prim name (e.g., `robot_1`, `robot_2`). This isolates all ROS topics and TF trees per robot without modifying the source USD file, enabling tooling to duplicate assets and update only the root namespace attribute.
+
+**Intra-robot asset composition:** When a robot is assembled from modular sub-assets (e.g., `arm.usd`, `mobile_base.usd`, `lidar_module.usd` referenced into `robot.usd` per Section 1.2.1), each sub-asset should author a default `ros:context:namespace` on its root prim. This serves two purposes:
+
+1.  **Standalone operation:** The sub-asset can be loaded and tested in isolation with its interfaces already namespaced without collision.
+2.  **Automatic scoping when composed:** When the sub-asset is referenced under a parent prim that also bears `RosContextAPI`, the concatenation rule produces a fully scoped topic without any additional configuration.
+
+**Duplicate sub-assets:** When the same sub-asset is referenced more than once into the same robot (e.g., a stereo camera pair both referencing `camera_module.usd`, or two identical finger modules), the composing `robot.usd` must override the `ros:context:namespace` attribute on each reference's root prim via a local USD opinion to give each instance a distinct name. Without this override, both instances publish to identical topic names and collide. The source sub-asset should author a generic placeholder namespace (e.g., `"camera"`) that the composing layer overrides per instance (e.g., `"camera_left"`, `"camera_right"`). As local opinions are the strongest strength in the LIVRPS order, this override does not require modifying the source file.
+
 
 ### 2.2 Interface Placement
 
