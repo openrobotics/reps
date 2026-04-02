@@ -87,7 +87,7 @@ As illustrated in Figure 1, assets should be divided into functional layers comp
 To guarantee that simulation assets remain self-contained, portable, and predictable across different simulator parsers, asset authors must adhere to the following constraints regarding OpenUSD's LIVRPS composition arcs:
 *   **[L] Local:** Primary authoring of overrides and properties on the asset is fully supported.
 *   **[I] Inherits & [S] Specializes:** Asset authors should not rely on `Inherits` or `Specializes` arcs that target class definitions outside the asset's own layer stack for core robot kinematics, physics APIs, or ROS schemas when distributing standalone assets. These arcs create hard dependencies on external class hierarchies; if a simulator's environment lacks the base class definitions, the asset will fail to parse correctly. The inherits-instanceable pattern, where the class prim is defined within the same asset, remains valid and is recommended for applying uniform overrides across instances.
-*   **[V] VariantSets:** Permitted and encouraged for asset reusability (see Section 1.2.3).
+*   **[V] VariantSets:** Permitted and encouraged for asset reusability (see Section 1.2.4).
 *   **[R] References:** Permitted for logical assembly (e.g., composing a robot by referencing an independent `arm.usd` and `base.usd`).
 *   **[P] Payloads (The Payload Pattern):** Heavy data (high-resolution meshes, point clouds, large textures) must be referenced via Payloads rather than standard References. 
     *   Payloads must not gate joint or link prims themselves. The kinematic topology (Prims bearing `PhysicsRigidBodyAPI`, `PhysicsJoint` schemas, and `Ros*API` schemas) must reside in the primarily loaded scene graph (e.g., via Local authoring or standard References). 
@@ -172,7 +172,7 @@ Neither OpenUSD nor glTF 2.0 currently standardize the specification of ROS inte
 
 ### 2.1 The ROS Context (`RosContextAPI`)
 The root prim of a ROS-interfaced simulation asset may define its context namespace.
-*   `string ros:context:namespace`: Prefixes all topics within this scope (e.g., `/robot_1`). Multiple values across the hierarchy are concatenated. See Section 2.1.1 for full rules.
+*   `string ros:context:namespace`: Prefixes all topics within this scope (e.g., `robot_1`). Multiple values across the hierarchy are concatenated in top-down order. See Section 2.1.1 for full rules.
 *   `int ros:context:domain_id` (Optional): Overrides the default ROS Domain ID for interfaces descending from this context.
 *   `string ros:context:parent_frame` (Optional, Default: `"world"`): Defines the parent `frame_id` used when the simulator broadcasts the ground-truth transform of this context's root prim. It is only valid for the top-most context in the resolved USD Stage and ignored otherwise.
 
@@ -181,7 +181,7 @@ The root prim of a ROS-interfaced simulation asset may define its context namesp
 `RosContextAPI` may be applied at multiple levels of the USD hierarchy; not necessarily just the robot's root prim. This enables per-sensor and per-module sub-namespacing within a single asset without manual per-interface configuration.
 
 Simulators must concatenate all `ros:context:namespace` values found on an interface prim's ancestor chain (in top-down order, from the stage root to the interface prim itself) to form the fully-resolved namespace for that interface:
-*   Each non-empty `ros:context:namespace` segment contributes one path component. Simulators must insert a `/` separator between segments and normalize the result (e.g., segments `"robot_1"` and `"left_camera"` produce the namespace `/robot_1/left_camera`).
+*   Each non-empty `ros:context:namespace` segment contributes one path component and must be authored as a bare name with no leading or trailing `/`. Simulators must insert a `/` separator between segments and normalize the result (e.g., segments `"robot_1"` and `"left_camera"` produce the namespace `/robot_1/left_camera`).
 *   An absent or empty-string `ros:context:namespace` contributes no segment.
 *   Any runtime namespace injected at deployment time (e.g., via the `/spawn_entity` service's `entity_namespace` field) is prepended as the outermost segment, before any namespace authored in the USD file.
 
@@ -189,12 +189,38 @@ Simulators must concatenate all `ros:context:namespace` values found on an inter
 
 **Multi-robot deployment:** When the same asset is instantiated more than once in a stage (e.g., a fleet of identical mobile robots), each instance's root prim must carry a unique `ros:context:namespace` value. The recommended convention is to use the instance's stage prim name (e.g., `robot_1`, `robot_2`). This isolates all ROS topics and TF trees per robot without modifying the source USD file, enabling tooling to duplicate assets and update only the root namespace attribute.
 
-**Intra-robot asset composition:** When a robot is assembled from modular sub-assets (e.g., `arm.usd`, `mobile_base.usd`, `lidar_module.usd` referenced into `robot.usd` per Section 1.2.1), each sub-asset should author a default `ros:context:namespace` on its root prim. This serves two purposes:
+**Intra-robot asset composition:** When a robot is assembled from modular sub-assets (e.g., `arm.usd`, `mobile_base.usd`, `lidar_module.usd` referenced into `robot.usd` per Section 1.2.1), each sub-asset should author a default `ros:context:namespace` on its `defaultPrim`, consistent with the USD reference-payload entry-point pattern. This serves two purposes:
 
 1.  **Standalone operation:** The sub-asset can be loaded and tested in isolation with its interfaces already namespaced without collision.
 2.  **Automatic scoping when composed:** When the sub-asset is referenced under a parent prim that also bears `RosContextAPI`, the concatenation rule produces a fully scoped topic without any additional configuration.
 
-**Duplicate sub-assets:** When the same sub-asset is referenced more than once into the same robot (e.g., a stereo camera pair both referencing `camera_module.usd`, or two identical finger modules), the composing `robot.usd` must override the `ros:context:namespace` attribute on each reference's root prim via a local USD opinion to give each instance a distinct name. Without this override, both instances publish to identical topic names and collide. The source sub-asset should author a generic placeholder namespace (e.g., `"camera"`) that the composing layer overrides per instance (e.g., `"camera_left"`, `"camera_right"`). As local opinions are the strongest strength in the LIVRPS order, this override does not require modifying the source file.
+**Duplicate sub-assets:** When the same sub-asset is referenced more than once into the same robot (e.g., a stereo camera pair both referencing `camera_module.usd`, or two identical finger modules), the composing `robot.usd` must override the `ros:context:namespace` attribute on each reference's root prim via a local USD opinion to give each instance a distinct name. Without this override, both instances publish to identical topic names and collide. The source sub-asset should author a generic placeholder namespace (e.g., `"camera"`) that the composing layer overrides per instance (e.g., `"camera_left"`, `"camera_right"`). As local opinions are the strongest strength in the LIVRPS order, this override does not require modifying the source file. For example:
+
+```
+def Xform "robot" (
+    prepend apiSchemas = ["RosContextAPI"]
+) {
+    string ros:context:namespace = "robot_1"
+
+    def Xform "camera_left" (
+        references = @./camera_module.usd@
+        prepend apiSchemas = ["RosContextAPI"]
+    ) {
+        string ros:context:namespace = "camera_left"  # overrides "camera" from source
+    }
+
+    def Xform "camera_right" (
+        references = @./camera_module.usd@
+        prepend apiSchemas = ["RosContextAPI"]
+    ) {
+        string ros:context:namespace = "camera_right"
+    }
+}
+```
+
+**Instancing caveat:** When a sub-asset is referenced with `instanceable = true`, attributes on the reference root prim remain editable, while its children become instance proxies meaning their attributes cannot be changed. A `ros:context:namespace` override cannot be defined in an instance proxy and must be authored on the reference root prim itself, or lofted above the payload boundary.
+
+*Note: `RosContextAPI` prims are part of the lightweight interface graph and must remain traversable without loading geometry payloads (see Section 2.2).*
 
 
 ### 2.2 Interface Placement
