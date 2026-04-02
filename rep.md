@@ -244,8 +244,8 @@ OpenUSD cameras natively face the -Z axis, whereas ROS optical frames (REP 103) 
 
 ROS nodes synchronize with simulation time by subscribing to `/clock` and setting `use_sim_time = true`. To ensure all ROS consumers (RViz, Nav2, sensor processors) agree on a common simulation timeline:
 
-*   The clock is a simulator-level concern. Asset USD files must not contain a `RosTopicAPI` prim that publishes to `/clock` as doing so would produce duplicate or conflicting clock sources when multiple assets are composed.
-*   Compliant simulators must publish simulation time on the absolute `/clock` topic using `rosgraph_msgs/msg/Clock` from the moment simulation begins playing until it is stopped.
+*   The clock is a simulator-level concern. Asset USD files must not contain any prim that publishes to absolute `/clock` topic, as doing so would produce duplicate or conflicting clock sources when multiple assets are composed.
+*   Compliant simulators must publish simulation time on the absolute `/clock` topic `rosgraph_msgs/msg/Clock` from the moment simulation begins playing until it is stopped.
 
 ---
 
