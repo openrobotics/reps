@@ -181,7 +181,7 @@ The root prim of a ROS-interfaced simulation asset may define its context namesp
 
 ROS interface schemas (`RosTopicAPI`, `RosServiceAPI`, `RosActionAPI`) must be applied to prims according to these placement rules:
 
-*   **Robot-wide interfaces:** Aggregate interfaces spanning a kinematic tree (e.g., `JointState` publisher, `FollowJointTrajectory` server) must be placed on or directly beneath the prim bearing the `RosContextAPI`.
+*   **Robot-wide interfaces:** Aggregate interfaces spanning a kinematic tree (e.g., `JointState` publisher, `FollowJointTrajectory` server) should be placed at root prim of the robot assembly.
 *   **Sensor interfaces:** Localized interfaces (e.g., `Image`, `LaserScan`) must be placed on a child `UsdGeomXform` of the physical link. Multiple interfaces for the same sensor (e.g., `image_raw` and `camera_info`) must distribute them across separate child prims, one interface per prim.
 *   **Interface prims must reside outside payloads.** Prims bearing `Ros*API` schemas are part of the lightweight kinematic/interface graph and must be traversable without loading geometry payloads.
 
@@ -239,22 +239,23 @@ Note: The broadcast frequency of TF frames is an implementation detail left to t
 ### 2.8 Optical Frames
 OpenUSD cameras natively face the -Z axis, whereas ROS optical frames (REP 103) must face +Z. To bridge this without opaque simulator-side rotations, authors must decouple the physical sensor from its optical interface. Authors must create a child UsdGeomXform (e.g., `camera_optical_frame`) rotated 180 degrees around its local X-axis. All RosTopicAPI and RosFrameAPI schemas must be applied exclusively to this optical frame, ensuring deterministic data orientation in RViz.
 
-<<<<<<< HEAD
+
+
 ### 2.9 Prohibited Interfaces
 
 Simulator-level interfaces are prohibited in assets to avoid clashes, including:
 
 *   `/clock` topic (`rosgraph_msgs/msg/Clock` interface) for simulation time.
 *   Any interfaces included in the `simulation_interfaces` package (e.g. spawning, simulation control).
+
 =======
-### 2.9 Joint Identification and Interoperability (ROS2JointAPI)
+### 2.10 Custom names to ROS joints.
 
-Applies to prims that possess a `PhysicsJointAPI` and are part of a kinematic chain of the robot.
-Used to identify and map joints between an imported scene and ROS-native concepts such as robot descriptions. This API enables one-to-one mapping between joints controlled by the ROS 2 control framework.
-*   `string ros2:joint:name`: The name of the joint (without namespace).
->>>>>>> 032622a (Added 4th section regarding robot control.)
-
----
+Number of concepts in ROS (e.g. robot descriptions, controllers) relly on joints names. 
+To ensure that joints are correctly identified and mapped to said concepts, the custom property `ros2:joint:name` must be applied to all Prims bearing built-in`UsdPhysicsJoint` schema. 
+This string value is source of joint name for all ROS communications (e.g., `FollowJointTrajectory` action goals, `JointState` messages), intergration with ROS tools (e.g., `ros2_control`), and mapping to other formats (e.g., MJCF's `<joint name="">`).
+If this property is missing, simulators must fall back to using the prim name.
+>>>>>>> 84b460b (Added `ros2:joint:name` custom attribute instead of ROS2JointAPI schema.)
 
 ## 3. Export and Conversion
 
@@ -312,21 +313,28 @@ OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched 
 
 In robotic simulation there are two approaches to simulating a robotic system — application level and control level simulation.
 
-In control level simulation, the focus is on the individual components and their interactions. 
-This approach is often used for low-level control and real-time feedback, allowing for more precise manipulation of the robot's movements and behaviors. In this context, the simulator exposes 
-a set of endpoints for controlling and monitoring the individual components of the robot and their control and state interfaces.
+In control level simulation, the focus is on the individual components.
+This approach is to be used for advanced use cases or validating low level robot controllers. 
+In this case the simulator is to expose joint state and command interface to control algorithm using API.
+Good example of such API is `hardware_interface` in `ros2_control` package.
+The REP-XXXX does not propose shape of the API and interface, and simulators are to build and maintain compatibility with external control frameworks, 
+it can be both ROS communication, inter-process communication, a shared library loaded by a simulator process or hardware-in-the loop solution (e.g. CAN bus link).
 
 In application level simulation, the simulator simulates the robot as a whole, including its physical properties, kinematics, and dynamics.
-This approach is often used for high-level planning and interaction with the environment. 
-It simplifies the process of simulating multi-robot scenarios.
+This approach is often used for high-level planning and interaction with the environment.
+This approach is meant to be used for application testing (e.g. whole robotics stacks, mapping, localization frameworks).
+In this approach the controller is integrated in the simulator codebase and managed by parameters of the prim and ROS communication.
 
-### 4.1 Control Interfaces
+### 4.1 External Control Interfaces
 
-The control interface uses ROS2JointAPI for controllable joint identification and the interface to be used with the control framework. 
-The shape and form of the interface that the simulator exposes to the control framework is not the scope of this REP and is simulator specific.
+The ROS 2 external control `ROS2ExternalControlAPI` is a schema for exposing robot control interfaces to external control algorithms.
+This schema is to be included as a built-in schema via `prepend apiSchemas` by a simulator-specific interface for controller.
+Simulator loading prim with this schema should establish connection, load controller plugin, spawn a controller instance or set up hardware-in-the-loop connection to the robot controller, 
+and expose the control and state interfaces to control entity.
 
-### 4.2 Application Simulation
-ROS2ControlAPI allows instantiating robot controllers directly in the simulated scene.
+### 4.2 Integrated Controller Simulation
+
+`ROS2IntegratedControlAPI` allows instantiating robot controllers directly in the simulated scene.
 It must reference one or more prims that have [ROS2TopicAPI](#24-topic-interface-ros2topicapi), [ROS2ServiceAPI](#25-service-interface-ros2serviceapi) or [ROS2ActionAPI](#26-action-interface-ros2actionapi).
 This schema is to be included as a built-in schema via `prepend apiSchemas` by a simulator-specific controller schema in the simulator.
 Example can be `simulatorXYZ::CustomROS2RigidBodyTwistControllerAPI` which will include as built-in `ROS2ControlAPI` and reference prims:
@@ -334,20 +342,28 @@ Example can be `simulatorXYZ::CustomROS2RigidBodyTwistControllerAPI` which will 
 - `PhysicsRigidBodyAPI` for interaction with the physics engine.
 
 USD does not enforce API schema constraints on referenced prims at the  schema definition level. It is the responsibility of the simulator to validate that all prims referenced by ROS2ControlAPI have at least one of the following API schemas applied: `ROS2TopicAPI`, `ROS2ServiceAPI` or `ROS2ActionAPI`. 
+
 ### 4.2.1 Built-in Controllers
 
 The following schemas are built-in controller schemas that include 
 `ROS2ControlAPI` as a built-in via `prepend apiSchemas`. 
 Simulators may implement these schemas to provide a standardized 
 control interface for common use cases.
+The following controllers are proposed as minimal for initial compliance. 
+The parameters and logic should follow established controllers in the ROS ecosystem and allow bootstrapping robot simulation with minimal custom development against 
+the typical use cases. 
+Simulators may choose to implement additional controllers as needed for their specific use cases and robot types, but these three are proposed as a baseline for compliance for 
+application level simulation.
+The implementation should allow performing multi-robot simulation and control by leveraging the namespaces.
 
 #### 4.2.1.1 ROS2RigidBodyTwistControllerAPI
 
-Controls a rigid body by subscribing to a `geometry_msgs/Twist` message
-and applying the commanded linear and angular velocities directly to the
-physics engine.
+Controls a rigid body by subscribing to a topic with type `geometry_msgs/Twist`
+and applying the commanded linear and angular velocities directly to the robot's body
+with optional acceleration and velocity limits. 
+Implementation should follow logic similar to the `diff_drive_controller` in `ros2_controllers` package.
 
-- `rel ros2:rigid_body_twist:cmd_vel`: Reference to a prim with `ROS2TopicAPI` 
+- `rel ros2:rigid_body_twist:subscriber`: Reference to a prim with `ROS2TopicAPI` 
   for subscribing to twist control messages.
 - `rel ros2:rigid_body_twist:body`: Reference to a prim with 
   `UsdPhysicsRigidBodyAPI` for applying velocities.
@@ -361,12 +377,15 @@ physics engine.
 
 #### 4.2.1.2 ROS2DiffDriveControllerAPI
 
-Controls a differential drive robot by subscribing to a
+Controls a differential drive robot by subscribing to a topic with type
 `geometry_msgs/Twist` message and converting the commanded linear
 and angular velocities into individual wheel velocities applied
-to the simulator joints.
+to the simulator joints. 
+The computed velocities should be applied to prims with `UsdPhysicsDriveAPI` (part of the native `USDPhysics`) representing the wheel joints, 
+and the controller should publish odometry data to a topic with type `nav_msgs/Odometry`.
+Implementation should follow logic similar to the `diff_drive_controller` in `ros2_controllers` package.
 
-- `rel ros2:diff_drive:cmd_vel`: Reference to prim with `ROS2TopicAPI` for subscribing to velocity commands.
+- `rel ros2:diff_drive:subscriber`: Reference to prim with `ROS2TopicAPI` for subscribing to velocity commands.
 - `rel ros2:diff_drive:odom`: Reference to prim with `ROS2TopicAPI` for publishing odometry data.
 - `rel[] ros2:diff_drive:left_wheels`: References to prims with `UsdPhysicsDriveAPI` representing left wheel joints.
 - `rel[] ros2:diff_drive:right_wheels`: References to prims with `UsdPhysicsDriveAPI` representing right wheel joints.
@@ -380,25 +399,32 @@ to the simulator joints.
 
 #### 4.2.1.3 ROS2JointTrajectoryControllerAPI
 
-Executes a joint trajectory by accepting a
-`control_msgs/FollowJointTrajectory` action goal and commanding
+Executes a joint trajectory by accepting a `control_msgs/FollowJointTrajectory` action goal and commanding
 the simulator to follow the specified trajectory.
+Implementation should follow logic similar to the `joint_trajectory_controller` in `ros2_controllers` package.
+Implementation needs to check the name for [custom joint names](rep.md#29-custom-names-to-ros-joints) in `ros2:joint:name` property of the joint prims and 
+use it for mapping trajectory points to joints in the simulator.
 
-**Relationships (Required):**
 - `rel ros2:joint_trajectory:server`: Reference to a prim with `ROS2ActionAPI` 
   for receiving trajectory action goals.
-- `rel[] ros2:joint_trajectory:joints`: References to prims with
-  `PhysicsJointAPI` and `ROS2JointAPI` representing the joints
-  to be controlled.
-
-**Core Attributes (Optional):**
+- `rel[] ros2:joint_trajectory:command_joints`: References to prims with `UsdPhysicsJointAPI`.
 - `double ros2:joint_trajectory:action_monitor_rate`: Frequency in Hz for 
   monitoring trajectory execution progress.
 - `double ros2:joint_trajectory:stopped_velocity_tolerance`: Velocity tolerance 
   at the end of the trajectory that indicates the controlled system has stopped.
-- `double ros2:joint_trajectory:goal_time`: Maximum time allowed to reach 
-  the trajectory goal.
+- `double ros2:joint_trajectory:timeout`: Maximum time allowed to reach the trajectory goal.
 
+#### 4.2.1.4 ROS2JointStateBroadcasterAPI
+
+Reads joint states from the simulator and publishes them as `sensor_msgs/JointState` messages to a ROS2 topic.
+Implementation should follow logic similar to the `joint_state_broadcaster` in `ros2_controllers` package.
+Implementation needs to check the name for [custom joint names](rep.md#29-custom-names-to-ros-joints) in `ros2:joint:name` 
+property of the joint prims and use it for mapping trajectory points to joints in the simulator.
+
+- `rel ros2:joint_state_broadcaster:publisher`: Reference to a prim with `ROS2TopicAPI` for publishing joint state data.
+- `rel[] ros2:joint_state_broadcaster:joints`: References to prims with `UsdPhysicsJointAPI` representing the joints whose states are to be broadcast.
+- `double ros2:joint_state_broadcaster:publish_rate`: Frequency in Hz at which joint states are published.
+- `string ros2:joint_state_broadcaster:frame_id`: The TF frame ID to be used in the published JointState messages.
 
 ## Tools
 
