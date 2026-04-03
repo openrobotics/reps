@@ -321,7 +321,6 @@ The REP-XXXX does not propose shape of the API and interface, and simulators are
 it can be both ROS communication, inter-process communication, a shared library loaded by a simulator process or hardware-in-the loop solution (e.g. CAN bus link).
 
 In application level simulation, the simulator simulates the robot as a whole, including its physical properties, kinematics, and dynamics.
-This approach is often used for high-level planning and interaction with the environment.
 This approach is meant to be used for application testing (e.g. whole robotics stacks, mapping, localization frameworks).
 In this approach the controller is integrated in the simulator codebase and managed by parameters of the prim and ROS communication.
 
