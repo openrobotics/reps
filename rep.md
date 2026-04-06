@@ -213,7 +213,7 @@ def Xform "robot" (
         references = @./camera_module.usd@
         prepend apiSchemas = ["RosContextAPI"]
     ) {
-        string ros:context:namespace = "camera_right"
+        string ros:context:namespace = "camera_right"  # overrides "camera" from source
     }
 }
 ```
