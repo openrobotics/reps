@@ -351,7 +351,7 @@ control interface for common use cases.
 The following controllers are proposed as minimal for initial compliance. 
 The parameters and logic should follow established controllers in the ROS ecosystem and allow bootstrapping robot simulation with minimal custom development against 
 the typical use cases. 
-Simulators may choose to implement additional controllers as needed for their specific use cases and robot types, but these three are proposed as a baseline for compliance for 
+Simulators may choose to implement additional controllers as needed for their specific use cases and robot types, but these four are proposed as a baseline for compliance for 
 application level simulation.
 The implementation should allow performing multi-robot simulation and control by leveraging the namespaces.
 
