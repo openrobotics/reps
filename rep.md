@@ -251,8 +251,8 @@ Simulator-level interfaces are prohibited in assets to avoid clashes, including:
 =======
 ### 2.10 Custom names to ROS joints.
 
-Number of concepts in ROS (e.g. robot descriptions, controllers) relly on joints names. 
-To ensure that joints are correctly identified and mapped to said concepts, the custom property `ros:joint:name` must be applied to all Prims bearing built-in`UsdPhysicsJoint` schema. 
+Number of concepts in ROS (e.g. robot descriptions, controllers) rely on joints names. 
+To ensure that joints are correctly identified and mapped to said concepts, the custom property `ros:joint:name` must be applied to all Prims bearing built-in `UsdPhysicsJoint` schema. 
 This string value is source of joint name for all ROS communications (e.g., `FollowJointTrajectory` action goals, `JointState` messages), intergration with ROS tools (e.g., `ros2_control`), and mapping to other formats (e.g., MJCF's `<joint name="">`).
 If this property is missing, simulators must fall back to using the prim name.
 >>>>>>> 84b460b (Added `ros2:joint:name` custom attribute instead of ROS2JointAPI schema.)
@@ -384,10 +384,11 @@ The computed velocities should be applied to prims with `UsdPhysicsDriveAPI` (pa
 and the controller should publish odometry data to a topic with type `nav_msgs/Odometry`.
 Implementation should follow logic similar to the `diff_drive_controller` in `ros2_controllers` package.
 
-- `rel ros:diff_drive:subscriber`: Reference to prim with `ROSTopicAPI` for subscribing to velocity commands.
+- `rel ros:diff_drive:subscriber`: relationship targeting a prim with the RosTopicAPI with `role="subscription"` that provides the velocity commands for this controller.
+
 - `rel ros:diff_drive:odom`: Reference to prim with `ROSTopicAPI` for publishing odometry data.
-- `rel[] ros:diff_drive:left_wheels`: References to prims with `UsdPhysicsDriveAPI` representing left wheel joints.
-- `rel[] ros:diff_drive:right_wheels`: References to prims with `UsdPhysicsDriveAPI` representing right wheel joints.
+- `rel ros:diff_drive:left_wheels`: References to prims with `UsdPhysicsDriveAPI` representing left wheel joints.
+- `rel ros:diff_drive:right_wheels`: References to prims with `UsdPhysicsDriveAPI` representing right wheel joints.
 - `double ros:diff_drive:wheel_separation`: Distance between left and right wheels in meters.
 - `double ros:diff_drive:wheel_radius`: Radius of the wheels in meters.
 - `double ros:diff_drive:cmd_vel_timeout`: Timeout in seconds after which the command is considered stale. Default: `0.5`.
@@ -406,7 +407,7 @@ use it for mapping trajectory points to joints in the simulator.
 
 - `rel ros:joint_trajectory:server`: Reference to a prim with `ROSActionAPI` 
   for receiving trajectory action goals.
-- `rel[] ros:joint_trajectory:command_joints`: References to prims with `UsdPhysicsJointAPI`.
+- `rel ros:joint_trajectory:command_joints`: References to prims with `UsdPhysicsJointAPI`.
 - `double ros:joint_trajectory:action_monitor_rate`: Frequency in Hz for 
   monitoring trajectory execution progress.
 - `double ros:joint_trajectory:stopped_velocity_tolerance`: Velocity tolerance 
@@ -420,8 +421,8 @@ Implementation should follow logic similar to the `joint_state_broadcaster` in `
 Implementation needs to check the name for [custom joint names](rep.md#29-custom-names-to-ros-joints) in `ros:joint:name` 
 property of the joint prims and use it for mapping trajectory points to joints in the simulator.
 
-- `rel ros:joint_state_broadcaster:publisher`: Reference to a prim with `ROSTopicAPI` for publishing joint state data.
-- `rel[] ros:joint_state_broadcaster:joints`: References to prims with `UsdPhysicsJointAPI` representing the joints whose states are to be broadcast.
+- `rel ros:joint_state_broadcaster:publisher`: relationship targeting a prim with the RosTopicAPI with `role="publisher"` for joint state data.
+- `rel ros:joint_state_broadcaster:joints`: References to prims with `UsdPhysicsJointAPI` representing the joints whose states are to be broadcast.
 - `double ros:joint_state_broadcaster:publish_rate`: Frequency in Hz at which joint states are published.
 - `string ros:joint_state_broadcaster:frame_id`: The TF frame ID to be used in the published JointState messages.
 
