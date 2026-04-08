@@ -616,7 +616,7 @@ class "RosJointTrajectoryControllerAPI" (
         customData = {
             string apiName = "commandJoints"
         }
-        doc = """References to prims with UsdPhysicsJointAPI representing
+        doc = """References to prims with UsdPhysicsJoint representing
         the joints to be commanded along the trajectory. Simulators must
         use the ros:joint:name custom property for joint name mapping,
         falling back to the prim name if absent."""
@@ -677,7 +677,7 @@ class "RosJointStateBroadcasterAPI" (
         customData = {
             string apiName = "joints"
         }
-        doc = """References to prims with UsdPhysicsJointAPI representing
+        doc = """References to prims with UsdPhysicsJoint representing
         the joints whose states are to be broadcast. Simulators must use
         the ros:joint:name custom property for joint name mapping,
         falling back to the prim name if absent."""

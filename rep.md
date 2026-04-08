@@ -336,7 +336,7 @@ and expose the control and state interfaces to control entity.
 `ROSIntegratedControlAPI` allows instantiating robot controllers directly in the simulated scene.
 It must reference one or more prims that have [ROSTopicAPI](#24-topic-interface-rostopicapi), [ROSServiceAPI](#25-service-interface-rosserviceapi) or [ROSActionAPI](#26-action-interface-rosactionapi).
 This schema is to be included as a built-in schema via `prepend apiSchemas` by a simulator-specific controller schema in the simulator.
-Example can be `simulatorXYZ::CustomROSRigidBodyTwistControllerAPI` which will include as built-in `ROSControlAPI` and reference prims:
+Example can be `simulatorXYZ::ROSCustomTwistControllerAPI` which will include as built-in `RosIntegratedControlAPI` and reference prims:
 - `ROSTopicAPI` for subscription of control message.
 - `PhysicsRigidBodyAPI` for interaction with the physics engine.
 
@@ -346,8 +346,8 @@ USD does not enforce API schema constraints on referenced prims at the  schema d
 
 The following schemas are built-in controller schemas that include 
 `ROSControlAPI` as a built-in via `prepend apiSchemas`. 
-Simulators may implement these schemas to provide a standardized 
-control interface for common use cases.
+Simulators may implement these schemas to provide a standardized control interface for common use cases. 
+Such usecase can be different robot locomotion (e.g. Ackermann car-like robot) or application specific itnrfaces (e.g., joint control interface for robot policy).
 The following controllers are proposed as minimal for initial compliance. 
 The parameters and logic should follow established controllers in the ROS ecosystem and allow bootstrapping robot simulation with minimal custom development against 
 the typical use cases. 
@@ -360,19 +360,11 @@ The implementation should allow performing multi-robot simulation and control by
 Controls a rigid body by subscribing to a topic with type `geometry_msgs/Twist`
 and applying the commanded linear and angular velocities directly to the robot's body
 with optional acceleration and velocity limits. 
-Implementation should follow logic similar to the `diff_drive_controller` in `ros2_controllers` package.
-
+This implementation provides a general-purpose controller for applying velocity to a rigid body in a generalized manner.
 - `rel ros:rigid_body_twist:subscriber`: Reference to a prim with `ROSTopicAPI` 
   for subscribing to twist control messages.
 - `rel ros:rigid_body_twist:body`: Reference to a prim with 
   `UsdPhysicsRigidBodyAPI` for applying velocities.
-
-- `double ros:rigid_body_twist:cmd_vel_timeout`: Timeout in seconds after 
-  which the command is considered stale. Default: `0.5`.
-- `double ros:rigid_body_twist:linear:x:max_velocity`: Maximum linear velocity in m/s.
-- `double ros:rigid_body_twist:linear:x:max_acceleration`: Maximum linear acceleration in m/s².
-- `double ros:rigid_body_twist:angular:z:max_velocity`: Maximum angular velocity in rad/s.
-- `double ros:rigid_body_twist:angular:z:max_acceleration`: Maximum angular acceleration in rad/s².
 
 #### 4.2.1.2 ROSDiffDriveControllerAPI
 
@@ -391,7 +383,7 @@ Implementation should follow logic similar to the `diff_drive_controller` in `ro
 - `rel ros:diff_drive:right_wheels`: References to prims with `UsdPhysicsDriveAPI` representing right wheel joints.
 - `double ros:diff_drive:wheel_separation`: Distance between left and right wheels in meters.
 - `double ros:diff_drive:wheel_radius`: Radius of the wheels in meters.
-- `double ros:diff_drive:cmd_vel_timeout`: Timeout in seconds after which the command is considered stale. Default: `0.5`.
+- `double ros:diff_drive:cmd_vel_timeout`: Timeout in seconds after which the command is considered stale. Exposed as dynamic paramter.
 - `double ros:diff_drive:linear:x:max_velocity`: Maximum linear velocity in m/s.
 - `double ros:diff_drive:linear:x:max_acceleration`: Maximum linear acceleration in m/s².
 - `double ros:diff_drive:angular:z:max_velocity`: Maximum angular velocity in rad/s.
@@ -407,11 +399,10 @@ use it for mapping trajectory points to joints in the simulator.
 
 - `rel ros:joint_trajectory:server`: Reference to a prim with `ROSActionAPI` 
   for receiving trajectory action goals.
-- `rel ros:joint_trajectory:command_joints`: References to prims with `UsdPhysicsJointAPI`.
+- `rel ros:joint_trajectory:command_joints`: References to prims with `UsdPhysicsJoint`.
 - `double ros:joint_trajectory:action_monitor_rate`: Frequency in Hz for 
   monitoring trajectory execution progress.
-- `double ros:joint_trajectory:stopped_velocity_tolerance`: Velocity tolerance 
-  at the end of the trajectory that indicates the controlled system has stopped.
+- `double ros:joint_trajectory:stopped_velocity_tolerance`: Velocity tolerance at the end of the trajectory that indicates the controlled system has stopped. Exposed as dynamic paramter.
 - `double ros:joint_trajectory:timeout`: Maximum time allowed to reach the trajectory goal.
 
 #### 4.2.1.4 ROSJointStateBroadcasterAPI
@@ -419,11 +410,10 @@ use it for mapping trajectory points to joints in the simulator.
 Reads joint states from the simulator and publishes them as `sensor_msgs/JointState` messages to a ROS topic.
 Implementation should follow logic similar to the `joint_state_broadcaster` in `ros2_controllers` package.
 Implementation needs to check the name for [custom joint names](rep.md#29-custom-names-to-ros-joints) in `ros:joint:name` 
-property of the joint prims and use it for mapping trajectory points to joints in the simulator.
+property of the joint prims and use it for mapping joints in the simulator to those in robot description or application.
 
 - `rel ros:joint_state_broadcaster:publisher`: relationship targeting a prim with the RosTopicAPI with `role="publisher"` for joint state data.
-- `rel ros:joint_state_broadcaster:joints`: References to prims with `UsdPhysicsJointAPI` representing the joints whose states are to be broadcast.
-- `double ros:joint_state_broadcaster:publish_rate`: Frequency in Hz at which joint states are published.
+- `rel ros:joint_state_broadcaster:joints`: References to prims with `UsdPhysicsJoint` representing the joints whose states are to be broadcast.
 - `string ros:joint_state_broadcaster:frame_id`: The TF frame ID to be used in the published JointState messages.
 
 ## Tools
