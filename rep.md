@@ -59,7 +59,7 @@ This REP adopts the ASWF Guidelines for Structuring USD Assets.
 
 #### 1.2.1 Schema Isolation and Functional Layering (The ETL Pipeline)
 
-To avoid "Unknown Schema" errors in standard 3D authoring tools (e.g., Blender, Maya) and to ensure assets remain modular, functional layering (Extract-Transform-Load) should be utilized for ROS interfaces, physics, and simulator-specific tooling syntax. 
+To avoid "Unknown Schema" errors in standard 3D authoring tools (e.g., Blender, Maya) and to ensure assets remain modular, functional layering (Extract-Transform-Load) should be utilized for ROS interfaces, physics, and simulator-specific tooling syntax.
 
 This REP endorses the ETL composition architecture developed collaboratively by NVIDIA, Intrinsic, and Disney Research for OpenUSD robotics assets.
 
@@ -178,23 +178,20 @@ The root prim of a ROS-interfaced simulation asset may define its context namesp
 
 #### 2.1.1 Hierarchical Namespace Concatenation
 
-`RosContextAPI` may be applied at multiple levels of the USD hierarchy; not necessarily just the robot's root prim. This enables per-sensor and per-module sub-namespacing within a single asset without manual per-interface configuration.
+The effective namespace is the top-down concatenation of `ros:context:namespace` attributes along the ancestor chain, automatically joined by `/` (e.g., `"robot_1"` and `"left_camera"` produce `/robot_1/left_camera`). An absent or empty attribute contributes no segment. Segments follow two authoring modes:
+*   **Composable (default):** A bare name with no leading or trailing `/` and no runtime substitutions (`~`, `{}`).
+*   **Absolute:** A leading `/` resets the chain, ignoring all ancestor values.
 
-Simulators must concatenate all `ros:context:namespace` values found on an interface prim's ancestor chain (in top-down order, from the stage root to the interface prim itself) to form the fully-resolved namespace for that interface:
-*   Each non-empty `ros:context:namespace` segment contributes one path component and must be authored as a bare name with no leading or trailing `/`. Simulators must insert a `/` separator between segments and normalize the result (e.g., segments `"robot_1"` and `"left_camera"` produce the namespace `/robot_1/left_camera`).
-*   An absent or empty-string `ros:context:namespace` contributes no segment.
-*   Any runtime namespace injected at deployment time (e.g., via the `/spawn_entity` service's `entity_namespace` field) is prepended as the outermost segment, before any namespace authored in the USD file.
+`ros:context:domain_id` is resolved from the nearest ancestor `RosContextAPI` prim; the simulator's default applies if none is set. `ros:context:parent_frame` is only valid on the outermost `RosContextAPI` in the stage and must be ignored on nested contexts.
 
-**TF topic names:** TF frames for all joints and links within one robot must be published on a single, robot-level topic. The `/tf` and `/tf_static` topic names are scoped using **only** the namespace from the outermost `RosContextAPI` ancestor of the robot's root prim. Sub-namespace segments from deeper `RosContextAPI` prims must not be appended to the TF topic name. TF frame IDs within the tree are unaffected by sub-namespace authoring.
+TF frames for all joints and links within one robot must be published on a single `/tf` and `/tf_static` topic, scoped using only the outermost `RosContextAPI` namespace. Sub-namespace segments must not be appended to the TF topic name.
 
-**Multi-robot deployment:** When the same asset is instantiated more than once in a stage (e.g., a fleet of identical mobile robots), each instance's root prim must carry a unique `ros:context:namespace` value. The recommended convention is to use the instance's stage prim name (e.g., `robot_1`, `robot_2`). This isolates all ROS topics and TF trees per robot without modifying the source USD file, enabling tooling to duplicate assets and update only the root namespace attribute.
+Each robot instance must carry a unique `ros:context:namespace` on its root prim; authors should use the stage prim name (e.g., `robot_1`, `robot_2`).
 
-**Intra-robot asset composition:** When a robot is assembled from modular sub-assets (e.g., `arm.usd`, `mobile_base.usd`, `lidar_module.usd` referenced into `robot.usd` per Section 1.2.1), each sub-asset should author a default `ros:context:namespace` on its `defaultPrim`, consistent with the USD reference-payload entry-point pattern. This serves two purposes:
+A modular asset's root namespace must be authored on its `defaultPrim`. When referencing that asset elsewhere, namespace overrides must be placed on the entry-point prim containing the composition arc to preserve `instanceable = true` compatibility. For duplicate sub-assets, each reference's entry-point prim must carry a distinct namespace via a local opinion — no source file modification is required. For example:
 
-1.  **Standalone operation:** The sub-asset can be loaded and tested in isolation with its interfaces already namespaced without collision.
-2.  **Automatic scoping when composed:** When the sub-asset is referenced under a parent prim that also bears `RosContextAPI`, the concatenation rule produces a fully scoped topic without any additional configuration.
-
-**Duplicate sub-assets:** When the same sub-asset is referenced more than once into the same robot (e.g., a stereo camera pair both referencing `camera_module.usd`, or two identical finger modules), the composing `robot.usd` must override the `ros:context:namespace` attribute on each reference's root prim via a local USD opinion to give each instance a distinct name. Without this override, both instances publish to identical topic names and collide. The source sub-asset should author a generic placeholder namespace (e.g., `"camera"`) that the composing layer overrides per instance (e.g., `"camera_left"`, `"camera_right"`). As local opinions are the strongest strength in the LIVRPS order, this override does not require modifying the source file. For example:
+<details>
+<summary>Example: Overriding namespace on duplicate sub-asset references</summary>
 
 ```
 def Xform "robot" (
@@ -218,9 +215,9 @@ def Xform "robot" (
 }
 ```
 
-**Instancing caveat:** When a sub-asset is referenced with `instanceable = true`, attributes on the reference root prim remain editable, while its children become instance proxies meaning their attributes cannot be changed. A `ros:context:namespace` override cannot be defined in an instance proxy and must be authored on the reference root prim itself, or lofted above the payload boundary.
+</details>
 
-*Note: `RosContextAPI` prims are part of the lightweight interface graph and must remain traversable without loading geometry payloads (see Section 2.2).*
+`RosContextAPI` prims must reside outside Payload arcs so the namespace graph can be resolved without loading heavy geometry (see Section 2.2). Sub-assets intended for per-instance namespace override should not set `instanceable = true`, as descendant prims become instance proxies whose attributes cannot be overridden; any override must be authored on the reference root prim or an ancestor outside the Payload arc.
 
 
 ### 2.2 Interface Placement
