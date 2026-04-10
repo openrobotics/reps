@@ -116,9 +116,7 @@ OpenUSD's native instancing mechanisms are designed for repetitive visual and st
 *    **Runtime Delegation:** Simulators supporting massive parallelism are expected to handle environment replication natively at runtime via their own APIs. Authors must not bake thousands of physics-enabled clones into the source file.
 
 ### 1.3 Physics
-*   **Rigid Body Hierarchy:** Assets should utilize Logical Nesting to represent kinematic chains (e.g., `Forearm` is a child of `UpperArm`). This preserves the Scene Graph for TF tree generation and ensures compatibility with parsers expecting URDF/SDF-like topologies (e.g., MuJoCo).
-    *  Simulators that require flat hierarchies are responsible for flattening the graph at import time. The asset itself must remain logically nested.
-*   **Joint Placement:** While `UsdPhysicsJoint` prims rely on relational targeting (`body0` and `body1`) rather than hierarchy, asset authors should place the Joint prim as a sibling adjacent to the child link it connects, within the scope of the parent link. This ensures self-contained modularity.
+*   **Joint Placement:** Asset authors should place the joint prim as a sibling adjacent to the child link it connects, within the scope of the parent link, to ensure self-contained modularity. Note that `UsdPhysicsJoint` prims rely on relational targeting (`body0` and `body1`) rather than hierarchy, which means parsers must reconstruct the kinematic tree exclusively from these relationships.
 *   **Joint Limits:** Non-continuous joints (e.g., revolute, prismatic) must author explicit `physics:lowerLimit` and `physics:upperLimit` attributes.
 *   **Articulation Roots:** A composed simulation stage must contain at most one `UsdPhysicsArticulationRootAPI` per connected kinematic tree. 
     *   Assets (e.g., a modular gripper) should be self-contained with an articulation root for standalone use. 
