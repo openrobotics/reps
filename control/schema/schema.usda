@@ -1,0 +1,339 @@
+#usda 1.0
+(
+    "ROS Integration Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic API schemas for ROS interfaces"
+    " as specified in REP-XXXX, Section 2."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdRosControl"
+        string libraryPath       = "usdRosControl"
+        string libraryPrefix     = "usdRosControl"
+        dictionary libraryTokens = {
+        }
+    }
+)
+{
+}
+
+# ======================================================================
+# Robot Control Schemas
+# Two approaches to simulating a robotic system are defined:
+#
+#   Control-level simulation (Section 1.1):
+#     The simulator exposes joint state and command interfaces to an
+#     external control algorithm. The interface shape is simulator-
+#     specific (e.g. ros2_control hardware_interface, IPC, HIL).
+#     Prims are marked with RosControlExternalAPI as a built-in.
+#
+#   Application-level (integrated) simulation (Section 1.2):
+#     The controller runs inside the simulator and is configured via
+#     prim parameters and ROS communication. Prims are marked with
+#     RosControlIntegratedAPI as a built-in and reference topic,
+#     service, or action interface prims.
+# ======================================================================
+
+# ======================================================================
+# Section 1.1 - RosControlExternalAPI
+# ======================================================================
+
+class "RosControlExternalAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlExternalAPI"
+    }
+    doc = """Base schema for exposing robot control interfaces to external control algorithms.
+
+    Applied (via 'prepend apiSchemas') by simulator-specific schemas to
+    identify prims whose joint state and command interfaces should be
+    exposed to an external control entity (e.g. a ros2_control
+    hardware_interface plugin, an inter-process controller, or a
+    hardware-in-the-loop connection).
+    """
+)
+{
+}
+
+# ======================================================================
+# Section 1.2 - RosControlIntegratedAPI
+# ======================================================================
+
+class "RosControlIntegratedAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlIntegratedAPI"
+    }
+    doc = """Base schema for integrated (application-level) robot controllers.
+
+    Included as a built-in via 'prepend apiSchemas' by simulator-specific
+    or standardized controller schemas that run the controller logic
+    inside the simulator. All prims referenced by a controller that
+    inherits this schema must have at least one of RosTopicAPI,
+    RosServiceAPI, or RosActionAPI applied. USD does not enforce this
+    constraint at the schema level; simulators are responsible for
+    runtime validation.
+    """
+)
+{
+}
+
+# ======================================================================
+# Section 1.2.1.1 - RosControlRigidBodyTwistAPI
+# ======================================================================
+
+class "RosControlRigidBodyTwistAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlRigidBodyTwistAPI"
+    }
+    doc = """Controls a rigid body via geometry_msgs/Twist messages.
+
+    Subscribes to a Twist topic and applies the commanded linear and
+    angular velocities directly to a rigid body in the physics engine,
+    with optional velocity and acceleration limits.
+    """
+)
+{
+    rel ros:rigid_body_twist:subscriber (
+        customData = {
+            string apiName = "subscriber"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        subscription for geometry_msgs/Twist control messages."""
+    )
+
+    rel ros:rigid_body_twist:body (
+        customData = {
+            string apiName = "body"
+        }
+        doc = """Reference to a prim with UsdPhysicsRigidBodyAPI to which
+        the commanded velocities are applied."""
+    )
+}
+
+# ======================================================================
+# Section 1.2.1.2 - RosControlDiffDriveAPI
+# ======================================================================
+
+class "RosControlDiffDriveAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlDiffDriveAPI"
+    }
+    doc = """Controls a differential drive robot via geometry_msgs/Twist messages.
+
+    Subscribes to a Twist topic, converts commanded linear and angular
+    velocities into individual wheel velocities, and applies them to
+    wheel joint prims with UsdPhysicsDriveAPI. Publishes odometry data
+    as nav_msgs/Odometry. Implementation should follow logic similar to
+    the diff_drive_controller in ros2_controllers.
+    """
+)
+{
+    rel ros:diff_drive:subscriber (
+        customData = {
+            string apiName = "subscriber"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        subscription for geometry_msgs/Twist velocity commands."""
+    )
+
+    rel ros:diff_drive:odom (
+        customData = {
+            string apiName = "odom"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        publisher for nav_msgs/Odometry data."""
+    )
+
+    rel ros:diff_drive:left_wheels (
+        customData = {
+            string apiName = "leftWheels"
+        }
+        doc = """References to prims with UsdPhysicsDriveAPI representing
+        the left wheel joints."""
+    )
+
+    rel ros:diff_drive:right_wheels (
+        customData = {
+            string apiName = "rightWheels"
+        }
+        doc = """References to prims with UsdPhysicsDriveAPI representing
+        the right wheel joints."""
+    )
+
+    uniform double ros:diff_drive:wheel_separation (
+        customData = {
+            string apiName = "wheelSeparation"
+        }
+        doc = """Distance between the left and right wheel contact points
+        in meters."""
+    )
+
+    uniform double ros:diff_drive:wheel_radius (
+        customData = {
+            string apiName = "wheelRadius"
+        }
+        doc = """Radius of the wheels in meters."""
+    )
+
+    uniform double ros:diff_drive:cmd_vel_timeout = 0.5 (
+        customData = {
+            string apiName = "cmdVelTimeout"
+        }
+        doc = """Timeout in seconds after which a velocity command is
+        considered stale and wheel velocities are zeroed."""
+    )
+
+    uniform double ros:diff_drive:linear:x:max_velocity (
+        customData = {
+            string apiName = "linearXMaxVelocity"
+        }
+        doc = """Maximum linear velocity along the X axis in m/s."""
+    )
+
+    uniform double ros:diff_drive:linear:x:max_acceleration (
+        customData = {
+            string apiName = "linearXMaxAcceleration"
+        }
+        doc = """Maximum linear acceleration along the X axis in m/s²."""
+    )
+
+    uniform double ros:diff_drive:angular:z:max_velocity (
+        customData = {
+            string apiName = "angularZMaxVelocity"
+        }
+        doc = """Maximum angular velocity around the Z axis in rad/s."""
+    )
+
+    uniform double ros:diff_drive:angular:z:max_acceleration (
+        customData = {
+            string apiName = "angularZMaxAcceleration"
+        }
+        doc = """Maximum angular acceleration around the Z axis in rad/s²."""
+    )
+}
+
+# ======================================================================
+# Section 1.2.1.3 - RosControlJointTrajectoryAPI
+# ======================================================================
+
+class "RosControlJointTrajectoryAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlJointTrajectoryAPI"
+    }
+    doc = """Executes joint trajectories via control_msgs/FollowJointTrajectory actions.
+
+    Accepts action goals and commands the simulator to follow the
+    specified joint trajectory. Implementation should follow logic
+    similar to the joint_trajectory_controller in ros2_controllers.
+    """
+)
+{
+    rel ros:joint_trajectory:server (
+        customData = {
+            string apiName = "server"
+        }
+        doc = """Reference to a prim with RosActionAPI configured as a
+        server for control_msgs/FollowJointTrajectory action goals."""
+    )
+
+    rel ros:joint_trajectory:command_joints (
+        customData = {
+            string apiName = "commandJoints"
+        }
+        doc = """References to prims with UsdPhysicsJoint representing
+        the joints to be commanded along the trajectory. Simulators must
+        use the ros:joint:name custom property for joint name mapping,
+        falling back to the prim name if absent."""
+    )
+
+    uniform double ros:joint_trajectory:action_monitor_rate (
+        customData = {
+            string apiName = "actionMonitorRate"
+        }
+        doc = """Frequency in Hz at which trajectory execution progress
+        is monitored."""
+    )
+
+    uniform double ros:joint_trajectory:stopped_velocity_tolerance (
+        customData = {
+            string apiName = "stoppedVelocityTolerance"
+        }
+        doc = """Velocity tolerance at the end of the trajectory below
+        which the controlled system is considered stopped."""
+    )
+
+    uniform double ros:joint_trajectory:timeout (
+        customData = {
+            string apiName = "timeout"
+        }
+        doc = """Maximum time in seconds allowed to reach the trajectory
+        goal before the action is aborted."""
+    )
+}
+
+# ======================================================================
+# Section 1.2.1.4 - RosControlJointStateBroadcasterAPI
+# ======================================================================
+
+class "RosControlJointStateBroadcasterAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlJointStateBroadcasterAPI"
+    }
+    doc = """Reads joint states and publishes them as sensor_msgs/JointState messages.
+
+    Implementation should follow logic similar to the
+    joint_state_broadcaster in ros2_controllers.
+    """
+)
+{
+    rel ros:joint_state_broadcaster:publisher (
+        customData = {
+            string apiName = "publisher"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        publisher for sensor_msgs/JointState messages."""
+    )
+
+    rel ros:joint_state_broadcaster:joints (
+        customData = {
+            string apiName = "joints"
+        }
+        doc = """References to prims with UsdPhysicsJoint representing
+        the joints whose states are to be broadcast. Simulators must use
+        the ros:joint:name custom property for joint name mapping,
+        falling back to the prim name if absent."""
+    )
+
+    uniform double ros:joint_state_broadcaster:publish_rate (
+        customData = {
+            string apiName = "publishRate"
+        }
+        doc = """Frequency in Hz at which joint states are published."""
+    )
+
+    uniform string ros:joint_state_broadcaster:frame_id (
+        customData = {
+            string apiName = "frameId"
+        }
+        doc = """The TF frame_id to be used in the published JointState
+        messages."""
+    )
+}
