@@ -322,18 +322,4 @@ class "RosControlJointStateBroadcasterAPI" (
         falling back to the prim name if absent."""
     )
 
-    uniform double ros:joint_state_broadcaster:publish_rate (
-        customData = {
-            string apiName = "publishRate"
-        }
-        doc = """Frequency in Hz at which joint states are published."""
-    )
-
-    uniform string ros:joint_state_broadcaster:frame_id (
-        customData = {
-            string apiName = "frameId"
-        }
-        doc = """The TF frame_id to be used in the published JointState
-        messages."""
-    )
 }

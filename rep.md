@@ -23,7 +23,6 @@ To achieve this, the specification addresses four key areas:
 *   **Section 1** adopts existing upstream standards and recommendations (AOUSD, ASWF, NVIDIA) to establish a baseline for correct simulation assets.
 *   **Section 2** defines novel, declarative API schemas for ROS interfaces to ensure engine-agnostic runtime behavior.
 *   **Section 3** defines a strict interoperability profile to support export pathways to other formats, ensuring compatibility with standards like glTF 2.0.
-*   **Section 4** defines schemas for robot control, covering both low-level joint identification and high-level application-level controllers.
 
 ## Motivation 
 
@@ -239,8 +238,6 @@ Note: The broadcast frequency of TF frames is an implementation detail left to t
 ### 2.8 Optical Frames
 OpenUSD cameras natively face the -Z axis, whereas ROS optical frames (REP 103) must face +Z. To bridge this without opaque simulator-side rotations, authors must decouple the physical sensor from its optical interface. Authors must create a child UsdGeomXform (e.g., `camera_optical_frame`) rotated 180 degrees around its local X-axis. All RosTopicAPI and RosFrameAPI schemas must be applied exclusively to this optical frame, ensuring deterministic data orientation in RViz.
 
-
-
 ### 2.9 Prohibited Interfaces
 
 Simulator-level interfaces are prohibited in assets to avoid clashes, including:
@@ -255,7 +252,6 @@ Number of concepts in ROS (e.g. robot descriptions, controllers) rely on joints 
 To ensure that joints are correctly identified and mapped to said concepts, the custom property `ros:joint:name` must be applied to all Prims bearing built-in `UsdPhysicsJoint` schema. 
 This string value is source of joint name for all ROS communications (e.g., `FollowJointTrajectory` action goals, `JointState` messages), intergration with ROS tools (e.g., `ros2_control`), and mapping to other formats (e.g., MJCF's `<joint name="">`).
 If this property is missing, simulators must fall back to using the prim name.
->>>>>>> 84b460b (Added `ros2:joint:name` custom attribute instead of ROS2JointAPI schema.)
 
 ## 3. Export and Conversion
 

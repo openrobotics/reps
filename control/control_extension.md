@@ -31,7 +31,7 @@ and expose the control and state interfaces to control entity.
 ### 1.2 Integrated Controller Simulation
 
 `RosControlIntegratedAPI` allows instantiating robot controllers directly in the simulated scene.
-It must reference one or more prims that have [RosTopicAPI](#24-topic-interface-rostopicapi), [RosServiceAPI](#25-service-interface-rosserviceapi) or [RosActionAPI](#26-action-interface-rosactionapi).
+It must reference one or more prims that have [RosTopicAPI](../rep.md#24-topic-interface-rostopicapi), [RosServiceAPI](../rep.md#25-service-interface-rosserviceapi) or [RosActionAPI](../rep.md#26-action-interface-rosactionapi).
 This schema is to be included as a built-in schema via `prepend apiSchemas` by a simulator-specific controller schema in the simulator.
 Example can be `simulatorXYZ::RosCustomTwistControllerAPI` which will include as built-in `RosControlIntegratedAPI` and reference prims:
 - `RosTopicAPI` for subscription of control message.
@@ -90,7 +90,7 @@ Implementation should follow logic similar to the `diff_drive_controller` in `ro
 Executes a joint trajectory by accepting a `control_msgs/FollowJointTrajectory` action goal and commanding
 the simulator to follow the specified trajectory.
 Implementation should follow logic similar to the `joint_trajectory_controller` in `ros2_controllers` package.
-Implementation needs to check the name for [custom joint names](rep.md#29-custom-names-to-ros-joints) in `ros:joint:name` property of the joint prims and 
+Implementation needs to check the name for [custom joint names](../rep.md#29-custom-names-to-ros-joints) in `ros:joint:name` property of the joint prims and 
 use it for mapping trajectory points to joints in the simulator.
 
 - `rel ros:joint_trajectory:server`: Reference to a prim with `RosActionAPI` 
