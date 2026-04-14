@@ -24,6 +24,8 @@ To achieve this, the specification addresses four key areas:
 *   **Section 2** defines novel, declarative API schemas for ROS interfaces to ensure engine-agnostic runtime behavior.
 *   **Section 3** defines a strict interoperability profile to support export pathways to other formats, ensuring compatibility with standards like glTF 2.0.
 
+Following the OpenUSD and glTF 2.0 model, this REP establishes a Core Standard, and proposes general rules for handling of extension schemas, including for control interfaces and sensor simulation.
+
 ## Motivation 
 
 The ROS ecosystem chiefly relies on URDF and SDF for describing robots and environments. These formats are almost entirely confined to the ROS and Gazebo ecosystems. OpenUSD has emerged as an industry standard supported by a multitude of tools and allows artists to collaborate with simulation engineers without problematic conversions between a variety of 3D and XML formats. Ensuring OpenUSD works well with ROS integrations across robotics simulators will increase ecosystem interoperability and strengthen ROS's position in physical AI workflows such as synthetic data and generative pipelines. OpenUSD is a powerful format with an extensible architecture allowing it to capture all the semantics of other popular formats.
@@ -289,13 +291,33 @@ Simulator-level interfaces are prohibited in assets to avoid clashes, including:
 *   `/clock` topic (`rosgraph_msgs/msg/Clock` interface) for simulation time.
 *   Any interfaces included in the `simulation_interfaces` package (e.g. spawning, simulation control).
 
-=======
 ### 2.10 Custom names to ROS joints.
 
 Number of concepts in ROS (e.g. robot descriptions, controllers) rely on joints names. 
 To ensure that joints are correctly identified and mapped to said concepts, the custom property `ros:joint:name` must be applied to all Prims bearing built-in `UsdPhysicsJoint` schema. 
 This string value is source of joint name for all ROS communications (e.g., `FollowJointTrajectory` action goals, `JointState` messages), intergration with ROS tools (e.g., `ros2_control`), and mapping to other formats (e.g., MJCF's `<joint name="">`).
 If this property is missing, simulators must fall back to using the prim name.
+
+### 2.11 Extension Schemas
+
+Additional schemas are to be defined through extensions, chiefly for sensors and controls. They must follow these general rules:
+
+*   **Use of Native Schemas:** Schema definitions must leverage core OpenUSD primitives to prevent attribute duplication. For example, `SensorCameraAPI` must apply to a `UsdGeomCamera` to append digital hardware metadata while natively reusing its optical properties. If no native analogue exists, schemas must be applied to a standard `UsdGeomXform`.
+*   **Separation of Transport:** Extension schemas must define purely physical or computational parameters (e.g., ray counts, wheel radius). They must not include metadata to handle ROS communication (e.g., topic names, QoS). Extension schemas should utilize relationships to target distinct transport prims (e.g., `RosTopicAPI`) to expose their data or commands.
+
+#### 2.11.1 Control Schemas
+
+In addition to extension schema rules, control interfaces and controllers must follow these rules:
+*   **Explicit Targeting:** Controllers must reside on dedicated logical prims (e.g., `/Robot/Controllers`) and explicitly target their actuated mechanisms. Simulators must not rely on Xform scene graph nesting to infer a controller's scope. Controllers must declare targets using OpenUSD relationships (`rel`) or standard `UsdCollectionAPI` collections. This guarantees modularity and robust path resolution when sub-assemblies are composed.
+*   **Actuation via Physics:** Control schemas must interface with dynamic bodies strictly through the simulation's physics pipeline. Position, velocity, and effort targets must be routed through normative OpenUSD dynamics paradigms (e.g., `UsdPhysicsDriveAPI` or solver force buffers). Controllers that directly manipulate spatial transforms must only actuate prims where `physics:kinematicEnabled = true`. Control schemas must not handle simulator-level state changes (e.g., native simulator state APIs or ROS `simulation_interfaces`), including resets for RL training or entity state manipulation.
+*   **Runtime selection:** A single asset may contain multiple, mutually exclusive control paradigms for the same hardware (e.g., trajectory control vs. direct effort control). While `VariantSets` remain the standard for structural hardware changes, control schemas must provide a dynamic enablement mechanism (e.g., `bool control:enabled`) to support runtime switching. The asset's default authored state must guarantee that overlapping controllers are not simultaneously active.
+
+#### 2.11.2 Sensor Schemas
+
+In addition to extension schema rules, sensor schemas must follow these rules:
+*   **Ground Truth:** Sensor schemas must emulate measurable phenomena to ensure valid Software-in-the-Loop (SiL) testing. Simulator-generated Ground Truth artifacts (e.g., semantic segmentations, bounding boxes) must not be bundled into physical sensor schemas; they should be explicitly requested via dedicated annotator schemas.
+*   **Traversal:** Sensor schemas must be applied directly to the `UsdGeomXform` or `UsdGeomCamera` defining their physical origin and local coordinate frame. To ensure efficient parser discovery, these prims must reside in the asset's lightweight, traversable kinematic hierarchy.
+*   **Graceful Degradation:** Sensor schemas must define a functional, universal baseline of parameters. Advanced, engine-specific behaviors (e.g., proprietary rendering profiles, custom noise models) must be authored exclusively via vendor-namespaced custom attributes (e.g., `isaac:`, `gazebo:`). Simulators must safely ignore unrecognized namespaces and gracefully fall back to the universal baseline.
 
 ## 3. Export and Conversion
 
@@ -349,19 +371,25 @@ OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched 
 *   **API Translation:** Ros*API schemas must map exclusively to modern extension blocks (e.g., SDF `<plugin>`, MJCF `<extension>`). Obsolete approaches such as injecting legacy `<gazebo>` tags into URDF are not allowed.
 *   **Discard, not inject:** OpenUSD-native metadata (layer stacks, unselected variants) must be cleanly discarded. Injecting custom, non-standard XML elements to store unmappable OpenUSD states is not recommended. If pipeline necessitates it for practicality, such metadata must be confined to valid, format-native extension points.
 
-## Extensions
-
-A number of features (e.g., control interfaces, sensors specification) are proposed to extend this schema. 
-These extensions are not required for compliance with the core REP, but are recommended for simulators targeting interoperability with ROS.
-They will be defined in future iterations of this document and shared with the community for feedback.
-
 ## Tools
 
-### Schema Definition
+### Core Schema Definition
 The normative OpenUSD schema definition for all `Ros*API` schemas is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
 
 ### Compliance Checker
 A REP-XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for every violation or non-conformance.
+
+## Extensions
+
+Due to the number and dynamic nature of control and sensor types, these will be handled as extension schemas to interoperability profile compliance. They will be submitted and ratified independently.
+
+A canonical repository for these extensions is `ros-simulation/openusd-schemas`, and the following is mandated:
+- A submission must follow the rules of this REP where applicable, e.g. including declarative parameters that can be implemented accross simulators, and adhering to general rules for sensors and control schemas (e.g. graceful degradation). A submission may include one or more vendor or physic engine specific layers as outlined in Section 1.4.
+- A submission must include addition to Compliance Checker which allows the use of new schema to be validated, a documentation of use, and a minimal example asset.
+
+### Compliant Assets 
+
+A canonincal repository of open-source, compliant simulation assets is to be established as `ros-simulation/openusd-assets`. These assets will have payloads hosted independently (e.g. in a dedicated repository such as Hugging Face) and must pass the Compliance Checker.
 
 ## References
 *   **[NVIDIA-ETL-PIPELINE]** NVIDIA, Intrinsic, Disney Research. "Using OpenUSD for Modular and Scalable Robotic Simulation and Development". URL: `https://developer.nvidia.com/blog/using-openusd-for-modular-and-scalable-robotic-simulation-and-development/`
