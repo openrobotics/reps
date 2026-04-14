@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **REP** | XXXX |
 | **Title** | OpenUSD Conventions for Simulation Asset Interoperability |
-| **Authors** | Adam Dabrowski, Mateusz Zak (Robotec.ai), Ayush Ghosh (NVIDIA) |
+| **Authors** | Adam Dabrowski, Mateusz Zak, Michal Pelka (Robotec.ai), Ayush Ghosh (NVIDIA) |
 | **Status** | Draft |
 | **Type** | Standards Track |
 | **Content-Type** | text/markdown |
