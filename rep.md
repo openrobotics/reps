@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **REP** | XXXX |
 | **Title** | OpenUSD Conventions for Simulation Asset Interoperability |
-| **Authors** | Adam Dabrowski, Mateusz Zak, Michal Pelka (Robotec.ai), Ayush Ghosh (NVIDIA) |
+| **Authors** | Adam Dabrowski, Mateusz Zak, Michal Pelka (Robotec.ai), Ayush Ghosh (NVIDIA), Franco Cipollone (Ekumen) |
 | **Status** | Draft |
 | **Type** | Standards Track |
 | **Content-Type** | text/markdown |
@@ -50,10 +50,11 @@ This section confirms and standardizes prior work and recommendations for OpenUS
 ### 1.1 Coordinate Systems & Units
 To ensure alignment with ROS standards (REP 103) and stability across solvers:
 
-*   **Units:** All linear dimensions in the USD stage must be defined in meters, and all mass values in kilograms.
-    *   `metersPerUnit` and `kilogramsPerUnit` metadata must be set to `1.0` in the root layer.
-    *   Fallback: while interoperable assets must adhere to 1.0, simulators and converters importing general OpenUSD assets must read these metadata tokens and  apply the appropriate scaling factors to all derived spatial and physical quantities (e.g., coordinates, torque, stiffness, inertia) at load time
+*   **Standard Units (MKS):** Distributed assets must be natively authored in MKS (Meters, Kilograms, Seconds). Root layer metadata (`metersPerUnit`, `kilogramsPerUnit`, `timeCodesPerSecond`) must be explicitly set to 1.0.
+     *    **No Runtime Scaling:** Upstream source units (e.g., CAD millimeters) must be physically baked into vertex data and physics properties (e.g., inertia tensors, joint limits) during the ETL pipeline. Relying on runtime metadata to globally rescale assets is prohibited, as it frequently corrupts non-linear physics across solvers. Simulators are entitled to assume `1.0` scaling.
 *   **Up-Axis & Chirality:** The stage `upAxis` must be set to `"Z"`. Assets must follow the strict ROS Right-Handed coordinate convention: X-forward, Y-left, Z-up.
+*   **Transform Operations:** To guarantee a parity with ROS `geometry_msgs/Transform`, kinematic prims must use a minimal `xformOpOrder` stack: exactly one `xformOp:translate` and one `xformOp:orient` (quaternion). Baked 4x4 matrices (`xformOp:transform`) are prohibited on final assets, as they obscure scale and force costly runtime decomposition. While Euler angles (`xformOp:rotateXYZ`) are acceptable in source assets for human readability and URDF rpy alignment, ETL pipelines must convert all Euler rotations (translating URDF radians to USD degrees) and decompose all CAD matrices into this translate/orient format.
+*   **Scale Operations:** Kinematic prims (rigid bodies and joints) must maintain strict identity scale or omit `xformOp:scale` entirely. Non-identity scale on kinematic prims corrupts inertia tensors, distorts joint axes, and has no representation in the ROS TF tree. Any scaling such as non-uniform scaling to derive shapes must be pushed down and applied exclusively to the leaf visual or collision geometry prims.
 *   **Root Transforms:** Assets must not rely on root-node rotations (e.g., `xformOp:rotateX = -90`) to align geometry. Points and normals should be transform-applied (frozen) to Z-up at the source level.
 *   **Asset Pivots:** For assets intended to be placed on the ground (e.g., warehouse racks), the root origin should be located at the bottom-center of the asset bounding box (Z=0) to facilitate predictable drag-and-drop scene composition in simulators. Mobile bases should adhere to REP 105 origin conventions.
 
@@ -235,6 +236,7 @@ ROS interface schemas (`RosTopicAPI`, `RosServiceAPI`, `RosActionAPI`) must be a
 For all schema types (Topics, Services, Actions) defined below:
 *   **Type Resolution:** Tooling and compliant simulators must attempt to resolve the `ros:*:type` string (e.g., `sensor_msgs/msg/Image`) dynamically against the sourced ROS environment. If the interface type is not found, the simulator must safely disable that specific interface, allow the rest of the asset to function normally, and emit a distinct warning/error.
 *   **Name Validation:** All `ros:*:name` values must strictly adhere to ROS topic naming rules (alphanumeric, underscores, and forward slashes only; cannot start with a number).
+*   **Initialization State:** All ROS interfaces (`RosTopicAPI`, `RosServiceAPI`, `RosActionAPI`) support a `bool ros:*:starts_enabled` attribute (`Optional`, `Default: true`). This dictates the initialization state of the interface at load time, preventing startup conflicts or unwanted compute overhead. Runtime lifecycle management (e.g., dynamically disabling the publisher mid-simulation) is the responsibility of the simulator.
 
 ### 2.4 Topic Interface (`RosTopicAPI`)
 Applies to Prims that exchange streaming ROS data.
@@ -244,6 +246,10 @@ Applies to Prims that exchange streaming ROS data.
 *   `string ros:topic:name`: The topic name relative to the active namespace.
 *   `string ros:topic:type`: The ROS message type.
 *   `double ros:topic:publish_rate`: Target publication frequency in Hz. Required for publishers; ignored for subscriptions.
+
+**Optional Override**
+
+*   `string ros:topic:override_frame_id (Optional):` Overrides the `header.frame_id` populated in the published ROS message. This must only be used to reference external global frames (e.g., "map", "earth") that cannot exist natively within the USD stage. Relevant only for message types containing a `std_msgs/Header`.
 
 **Quality of Service (QoS):**
 Maps directly to `rmw_qos_profile_t` policies. If an attribute is omitted, simulators must assume the specified defaults. *(Note: As per REP 2003, simulated sensors should default to `"system_default"` which maps to best-effort, while map publishers should use `"transient_local"`).*

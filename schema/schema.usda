@@ -57,6 +57,13 @@ over "GLOBAL" (
             dictionary world = {
                 string doc = """Default parent frame for the top-most RosContextAPI."""
             }
+
+            # --- Enable/disable token ---
+            dictionary starts_enabled = {
+                string doc = """Common boolean attribute to indicate whether a ROS interface
+                 is enabled at load time without removing the schema application. Runtime 
+                 lifecycle management is delegated to the simulator."""
+            }
         }
     }
 )
@@ -172,6 +179,31 @@ class "RosTopicAPI" (
     )
 
     # ------------------------------------------------------------------
+    # Optional attributes
+    # ------------------------------------------------------------------
+
+    uniform string ros:topic:override_frame_id = "" (
+        customData = {
+            string apiName = "overrideFrameId"
+        }
+        doc = """If non-empty, overrides the Header.frame_id populated in
+        the published message. When empty or omitted, simulators use the
+        TF frame name of the nearest ancestor that is a TF frame
+        (implicit or explicit). Only relevant for message types
+        containing a std_msgs/Header; ignored otherwise."""
+    )
+
+    uniform bool ros:topic:starts_enabled = true (
+        customData = {
+            string apiName = "startsEnabled"
+        }
+        doc = """If false, simulators must skip active instantiation of this
+        interface at load time. Allows VariantSets or composition overrides
+        to declaratively toggle interfaces. Runtime lifecycle management 
+        remains the simulator's responsibility."""
+    )
+
+    # ------------------------------------------------------------------
     # Quality of Service (QoS) Attributes
     # ------------------------------------------------------------------
 
@@ -260,6 +292,16 @@ class "RosServiceAPI" (
         doc = """The ROS 2 service type (e.g. 'std_srvs/srv/SetBool').
         Simulators must resolve dynamically; disable on failure."""
     )
+
+    uniform bool ros2:starts_enabled = true (
+        customData = {
+            string apiName = "startsEnabled"
+        }
+        doc = """If false, simulators must skip active instantiation of this
+        interface at load time. Allows VariantSets or composition overrides
+        to declaratively toggle interfaces. Runtime lifecycle management 
+        remains the simulator's responsibility."""
+    )
 }
 
 # ======================================================================
@@ -303,6 +345,16 @@ class "RosActionAPI" (
         doc = """The ROS 2 action type
         (e.g. 'control_msgs/action/FollowJointTrajectory').
         Simulators must resolve dynamically; disable on failure."""
+    )
+
+    uniform bool ros2:starts_enabled = true (
+        customData = {
+            string apiName = "startsEnabled"
+        }
+        doc = """If false, simulators must skip active instantiation of this
+        interface at load time. Allows VariantSets or composition overrides
+        to declaratively toggle interfaces. Runtime lifecycle management 
+        remains the simulator's responsibility."""
     )
 }
 
