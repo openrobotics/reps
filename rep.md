@@ -301,7 +301,7 @@ If this property is missing, simulators must fall back to using the prim name.
 
 ## 3. Export and Conversion
 
-OpenUSD is a vast standard supporting complex features. To guarantee that assets can be converted to glTF 2.0 and successfully exported to lightweight applications, assets must adhere to this constrained subset.
+OpenUSD is a vast standard supporting complex features. To guarantee that assets can be converted to glTF 2.0 and successfully exported to work with lightweight applications and standard ROS tools (e.g., RViz, MoveIt) without mandating native OpenUSD support, assets must adhere to this constrained subset.
 
 ### 3.1 Material Portability
 *   **Normative Surface:** Assets must use UsdPreviewSurface as the normative surface definition to ensure a direct mapping to glTF 2.0's pbrMetallicRoughness workflow. Target converters may also support OpenPBR[AOUSD-OPENPBR].
