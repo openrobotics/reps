@@ -286,7 +286,7 @@ class "RosServiceAPI" (
         Simulators must resolve dynamically; disable on failure."""
     )
 
-    uniform bool ros:starts_enabled = true (
+    uniform bool ros:service:starts_enabled = true (
         customData = {
             string apiName = "startsEnabled"
         }
@@ -340,7 +340,7 @@ class "RosActionAPI" (
         Simulators must resolve dynamically; disable on failure."""
     )
 
-    uniform bool ros:starts_enabled = true (
+    uniform bool ros:action:starts_enabled = true (
         customData = {
             string apiName = "startsEnabled"
         }
