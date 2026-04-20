@@ -33,7 +33,7 @@ The ROS ecosystem chiefly relies on URDF and SDF for describing robots and envir
 
 While OpenUSD adoption is growing quickly, only the core standard specification has been ratified so far, leaving most of what's interesting for robotics uncovered. OpenUSD lacks standardized semantic representations for ROS interfaces and standard rules for mapping to ROS concepts such as frames and TF trees. OpenUSD's flexibility also permits practices that degrade interoperability, such as proprietary extensions, defining execution instead of intent, and overfitting to particular workflows.
 
-OpenUSD is championed by the Alliance for OpenUSD (AOUSD) and the ASWF USD Working Group. NVIDIA also plays a key role both as a founding member of AOUSD and in developing OpenUSD for robotics through Omniverse, Isaac Sim and Newton. This REP builds on top of great work done by all these entities, extending it by addressing what is not yet standardized but urgently needed for OpenUSD interoperability in the ROS simulation ecosystem, and standardizing against practices that result in a vendor lock-in. As such, this REP is designed to adapt upstream standards for the ROS community, while serving as a reference to influence future decisions by AOUSD and ASWF.
+OpenUSD is championed by the Alliance for OpenUSD (AOUSD) and the ASWF USD Working Group. NVIDIA also plays a key role both as a founding member of AOUSD and in developing OpenUSD for robotics through Omniverse, Isaac Sim and Newton. This REP builds on top of significant work done by all these entities, extending it by addressing what is not yet standardized but urgently needed for OpenUSD interoperability in the ROS simulation ecosystem, and standardizing against practices that result in a vendor lock-in. As such, this REP is designed to adapt upstream standards for the ROS community, while serving as a reference to influence future decisions by AOUSD and ASWF.
 
 ## Specification
 
@@ -50,74 +50,75 @@ This section confirms and standardizes prior work and recommendations for OpenUS
 ### 1.1 Coordinate Systems & Units
 To ensure alignment with ROS standards (REP 103) and stability across solvers:
 
-*   **Standard Units (MKS):** Distributed assets must be natively authored in MKS (Meters, Kilograms, Seconds). Root layer metadata `metersPerUnit` and `kilogramsPerUnit` must be explicitly set to `1.0`. `timeCodesPerSecond` must also be set to `1.0` so that one USD time code equals one second, ensuring time-sampled data (e.g., animated joint trajectories) plays back at the correct rate without additional scaling. 
-     *    **No Runtime Scaling:** Upstream source units (e.g., CAD millimeters) must be physically baked into vertex data and physics properties (e.g., inertia tensors, joint limits) during the ETL pipeline. Relying on runtime metadata to globally rescale assets is prohibited, as it frequently corrupts non-linear physics across solvers. Simulators are entitled to assume `1.0` scaling.
-*   **Up-Axis & Chirality:** The stage `upAxis` must be set to `"Z"`. Assets must follow the strict ROS Right-Handed coordinate convention: X-forward, Y-left, Z-up.
+*   **Standard Units (MKS):** Assets must use MKS (Meters, Kilograms, Seconds). Root layer metadata `metersPerUnit` and `kilogramsPerUnit` must be explicitly set to `1.0`. `timeCodesPerSecond` must also be set to `1.0` so that one USD time code equals one second, ensuring time-sampled data (e.g., animated joint trajectories) plays back at the correct rate without additional scaling. All upstream units (e.g., CAD millimeters) must be baked into geometry and physics during the Extract-Transform-Load (ETL) pipeline. Simulators are entitled to assume `1.0` scaling.
+*   **Up-Axis & Chirality:** The stage `upAxis` must be `"Z"`. Assets must follow the strict ROS Right-Handed convention: X-forward, Y-left, Z-up.
 *   **Transform Operations:** To guarantee a parity with ROS `geometry_msgs/Transform`, kinematic prims must use a minimal `xformOpOrder` stack: exactly one `xformOp:translate` and one `xformOp:orient` (quaternion). Baked 4x4 matrices (`xformOp:transform`) are prohibited on final assets, as they obscure scale and force costly runtime decomposition. While Euler angles (`xformOp:rotateXYZ`) are acceptable in source assets for human readability and URDF rpy alignment, ETL pipelines must convert all Euler rotations (translating URDF radians to USD degrees) and decompose all CAD matrices into this translate/orient format.
-*   **Scale Operations:** Kinematic prims (rigid bodies and joints) must maintain strict identity scale or omit `xformOp:scale` entirely. Non-identity scale on kinematic prims corrupts inertia tensors, distorts joint axes, and has no representation in the ROS TF tree. Any scaling such as non-uniform scaling to derive shapes must be pushed down and applied exclusively to the leaf visual or collision geometry prims.
+*   **Scale Operations:** Kinematic prims (rigid bodies and joints) must maintain identity scale or omit `xformOp:scale` entirely. Scaling must be applied exclusively to the leaf visual or collision geometry prims.
 *   **Root Transforms:** Assets must not rely on root-node rotations (e.g., `xformOp:rotateX = -90`) to align geometry. Points and normals should be transform-applied (frozen) to Z-up at the source level.
-*   **Asset Pivots:** For assets intended to be placed on the ground (e.g., warehouse racks), the root origin should be located at the bottom-center of the asset bounding box (Z=0) to facilitate predictable drag-and-drop scene composition in simulators. Mobile bases should adhere to REP 105 origin conventions.
+*   **Asset Pivots:** For assets intended to be placed on the ground (e.g., warehouse racks), the root origin should be located at the bottom-center of the bounding box (Z=0) to facilitate predictable drag-and-drop scene composition in simulators. Mobile bases should adhere to REP 105 origin conventions.
 
 ### 1.2 Asset Structure & Composition
 This REP adopts the ASWF Guidelines for Structuring USD Assets.
 
 #### 1.2.1 Schema Isolation and Functional Layering (The ETL Pipeline)
 
-To avoid "Unknown Schema" errors in standard 3D authoring tools (e.g., Blender, Maya) and to ensure assets remain modular, functional layering (Extract-Transform-Load) should be utilized for ROS interfaces, physics, and simulator-specific tooling syntax.
-
-This REP endorses the ETL composition architecture developed collaboratively by NVIDIA, Intrinsic, and Disney Research for OpenUSD robotics assets.
 
 ![Extract-Transform-Load Pipeline for Robots in USD](etl_pipeline_diagram.png)
 *Figure 1: The Extract-Transform-Load (ETL) composition pipeline for OpenUSD robotics assets. Source: [NVIDIA Developer Blog](https://developer.nvidia.com/blog/using-openusd-for-modular-and-scalable-robotic-simulation-and-development/)*
 
 As illustrated in Figure 1, assets should be divided into functional layers composed via References and Payloads:
 
-*   **Asset Source & Transformation (The Base Layer):** The raw (e.g. CAD) data is optimized and decomposed into granular, functional files to maximize deduplication and performance. This layer contains core native OpenUSD schemas and should be structured as follows:
-    *   `geometries.usd`: Contains pure mesh topology and vertices (no physics, no schemas). Most geometries should use the binary format (`.usdc`).
-    *   `materials.usd`: Contains pure material definitions (`UsdShade`) and look-dev.
-    *   `instances.usd` (Optional, recommended): Assembles geometries and materials via references.
+*   **Layer Separation:** Assets must use functional layering (ETL) to isolate core OpenUSD data from simulation and ROS-specific schemas. This prevents "Unknown Schema" errors in standard tools and enables modular updates.
+*   **The Base Layer:** The core data must be decomposed into granular, functional files to maximize deduplication and performance:
+    *   `geometries.usd`: Contains pure mesh topology and vertices (no physics, no schemas), typically as `.usdc`.
+    *   `materials.usd`: Contains material and look-dev definitions.
+    *   `instances.usd`: (Optional, recommended): Assembles geometries and materials via references.
     *   `base.usd`: The pure kinematic hierarchy (Xforms), referencing the underlying instances and geometries without physical or execution logic.
-*   **Features (The Domain-Specific Layers):** Domain metadata is isolated into specific overlay files that reference the Base Layer. For example, `asset_physics.usd` contains the rigid bodies and joints, while `asset_ros.usd` contains the `Ros*API` schemas defined in this REP.
-*   **Entry Point (`asset.usd`):** The final distributed asset is a lightweight interface layer that uses **Payloads** to load the Features. 
-*   **Proprietary Layer:** Asset authors should avoid including heavy, simulator-specific implementations (e.g., proprietary execution graphs) within the interoperable asset package. If unavoidable, they must minimize this proprietary layer (e.g., `isaac.usd`, `o3de.usd`) to what is strictly necessary and keep it isolated as a separate Feature layer.
+*   **Features (The Domain-Specific Layers):** Domain metadata must be isolated into overlay files, including:
+    *    `physics.usd`: Contains `UsdPhysics` rigid bodies and joints.
+    *    `ros.usd`: Contains the `Ros*API` schemas.
+*   **Entry Point (`[asset_name].usd`):** The final distributed asset must be a lightweight interface layer that uses **Payloads** to load the Features. 
+*   **Proprietary Layer:** Simulator-specific implementations (e.g., proprietary execution graphs) must be limited to what is strictly necessary and confined to a separate proprietary layer (e.g., `isaac.usd`, `o3de.usd`).
 
 
 #### 1.2.2 The Composition Model
-*   **Components:** Atomic assets (e.g., a `LidarSensor`, a `Box`) must have `kind="component"` on their root prim.
+Assets must adhere to the OpenUSD Model Hierarchy to ensure predictable selection and traversal:
+*   **Components:** Idividual distributable assets assets (e.g., a sensor, a box) must have `kind="component"` on their root prim.
 *   **Assemblies:** Aggregates (e.g., a `Warehouse` containing racks) must have `kind="assembly"` or `kind="group"`.
-*   A `component` must not contain another `component`: if finer organizational granularity is required, authors must use kind="subcomponent" allowing converters to easily identify the "atomic units" of the scene.
+*   **Granularity:** Authors should use kind="subcomponent" for organizational prims within a component.
 
 #### 1.2.3 Composition Arcs (LIVRPS Constraints)
 To guarantee that simulation assets remain self-contained, portable, and predictable across different simulator parsers, asset authors must adhere to the following constraints regarding OpenUSD's LIVRPS composition arcs:
 *   **[L] Local:** Primary authoring of overrides and properties on the asset is fully supported.
-*   **[I] Inherits & [S] Specializes:** Asset authors should not rely on `Inherits` or `Specializes` arcs that target class definitions outside the asset's own layer stack for core robot kinematics, physics APIs, or ROS schemas when distributing standalone assets. These arcs create hard dependencies on external class hierarchies; if a simulator's environment lacks the base class definitions, the asset will fail to parse correctly. The inherits-instanceable pattern, where the class prim is defined within the same asset, remains valid and is recommended for applying uniform overrides across instances.
+*   **[I] Inherits & [S] Specializes:** Asset authors should not rely on `Inherits` or `Specializes` arcs that target class definitions outside the asset's own layer stack for core robot kinematics, physics APIs, or ROS schemas when distributing standalone assets. The inherits-instanceable pattern, where the class prim is defined within the same asset, remains valid and is recommended for applying uniform overrides across instances.
 *   **[V] VariantSets:** Permitted and encouraged for asset reusability (see Section 1.2.4).
 *   **[R] References:** Permitted for logical assembly (e.g., composing a robot by referencing an independent `arm.usd` and `base.usd`).
 *   **[P] Payloads (The Payload Pattern):** Heavy data (high-resolution meshes, point clouds, large textures) must be referenced via Payloads rather than standard References. 
-    *   Payloads must not gate joint or link prims themselves. The kinematic topology (Prims bearing `PhysicsRigidBodyAPI`, `PhysicsJoint` schemas, and `Ros*API` schemas) must reside in the primarily loaded scene graph (e.g., via Local authoring or standard References). 
+    *   Payloads must not encapsulate joint or link prims themselves. The kinematic topology (Prims bearing `PhysicsRigidBodyAPI`, `PhysicsJoint` schemas, and `Ros*API` schemas) must reside in the primarily loaded scene graph (e.g., via Local authoring or standard References). 
     *   The Payload should solely encapsulate the nested geometric and material data. This enables ROS parsers and web converters to traverse the lightweight kinematic tree efficiently without loading heavy buffers.
 
 #### 1.2.4 Variants
 OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., encapsulating multiple furniture styles, different robot end-effectors, or optional sensor suites within a single asset).
-*   **Default Variant Fallback:** Any asset utilizing `VariantSets` must author a default variant selection. This ensures that if the asset is loaded by a simulator or CI/CD pipeline without explicit variant overrides, it resolves to a valid, predictable physical and visual state.
-*   **ROS Interface Resolution:** A change in a variant selection may add or remove Prims containing `Ros*API` schemas (e.g., swapping a generic robot head for a sensor-equipped head). Simulators and tooling must only evaluate and spawn ROS interfaces that are active within the currently resolved variant state of the stage.
+*   **Default Variant Fallback:** Any asset utilizing `VariantSets` must author a default variant selection. This ensures that if the asset is loaded by a simulator or automated pipeline without explicit variant overrides, it resolves to a valid, physically and visually complete state.
+*   **ROS Interface Resolution:** A change in a variant selection may add or remove Prims containing `Ros*API` schemas (e.g., swapping a generic robot head for a sensor-equipped head). Simulators and tooling must only evaluate and instantiate ROS interfaces that are active within the currently resolved variant state of the stage.
 
 #### 1.2.5 Asset Management
 *   **Default Prim:** All distributable assets must set `defaultPrim` metadata on the root layer, pointing to the asset's primary entrypoint prim. Without it, referencing `@robot.usd@` without an explicit prim path is undefined behavior and the Payload pattern breaks silently.
 *   **Asset Identification (`assetInfo`):** All distributable assets must populate the `assetInfo` dictionary on the `defaultPrim` with at minimum:
     *   `string assetInfo:identifier`: A unique, stable identifier for the asset (e.g., a URI or canonical name).
     *   `string assetInfo:version`: A version string (e.g., `"1.0.0"`).
-    *   For robotics-specific identifiers that must be carried today (e.g., URDF package origin, original SDF model URI), authors should use a namespaced sub-dictionary (e.g., `assetInfo["ros"]`) following the `UsdMediaAssetPreviewsAPI` precedent. This is a vendor-tier convention positioned for promotion once a broader standard settles.
-    *   *Note: An active AOUSD proposal: [Separation of Concerns for Identifiers in USD (PR #105)](https://github.com/PixarAnimationStudios/OpenUSD-proposals/pull/105) is evaluating standardized mechanisms for carrying external source identifiers (e.g., PLM part numbers, OPC UA NodeIds, equipment tags) in USD. This REP will adopt the ratified upstream standard once finalized, replacing the interim `assetInfo` convention above.*
+    *   To carry robotics-specific provenance (e.g., URDF package origin, original SDFormat model URI, or component catalog IDs), authors should use a namespaced sub-dictionary: assetInfo["ros"].
+        *Example: `assetInfo["ros"]["package_uri"] = "package://my_robot/urdf/robot.urdf"`.
+    *   *Note: This REP aligns with the domain convention requested in the active AOUSD proposal: [Separation of Concerns for Identifiers in USD (PR #105)](https://github.com/PixarAnimationStudios/OpenUSD-proposals/pull/105) Once AOUSD ratifies a standardized mechanism for external identifiers, this REP will adopt it.*
 *   **Path Resolution:** Internal references must use relative paths (`./geo/mesh.usdc`). For distributed, highly interoperable assets, all file dependencies should be self-contained and rely exclusively on relative paths.
-*   **ROS packages:** External dependencies to other ROS packages must use the package:// URI scheme, and should be contained in ROS-specific .usd files in the ETL pipeline. Asset authors must be aware that resolving these URIs requires the host simulator or tool to implement a custom OpenUSD ArResolver plugin. Absolute paths and proprietary schemes (e.g., omniverse://) are strictly prohibited in distributed assets.
+*   **ROS packages:** External dependencies targeting other ROS packages must use the package:// URI scheme. Absolute paths or proprietary schemes (e.g., omniverse://) are prohibited for external package references. Tooling and simulators aiming for ROS interoperability must provide a custom OpenUSD ArResolver plugin to resolve these URIs.
 *   **Native Composition vs. Custom Prefabs:** The use of custom or vendor-specific string attributes (e.g., `custom string my_sim:prefabPath = "robot.usd"`) to dynamically load, instantiate, or compose assets at runtime is strictly prohibited for interoperable assets. Asset composition must rely purely on native OpenUSD references or payloads.
-*   **FileFormat Plugins:** OpenUSD supports FileFormat plugins (e.g., MuJoCo's `usdMjcf` plugin) to dynamically translate legacy formats into USD stages at runtime. While these plugins are recommended for import pathways, this REP governs the *resulting in-memory OpenUSD data*. Plugins interfacing with the ROS ecosystem must generate stages that conform to the physical hierarchies and API schemas defined in this document.
+*   **FileFormat Plugins:** OpenUSD supports FileFormat plugins (e.g.,`usdMjcf`) to dynamically translate legacy formats into USD stages at runtime. While these plugins are recommended for import pathways, this REP governs the *resulting in-memory OpenUSD data*. Plugins interfacing with the ROS ecosystem must generate stages that conform to the physical hierarchies and API schemas defined in this document.
 
 #### 1.2.6 Parallel Simulation and Instancing
 OpenUSD's native instancing mechanisms are designed for repetitive visual and structural geometry. They must not be used to clone articulated physics assets to create massive parallel arrays (e.g., for reinforcement learning).
 *    **Canonical Assets:** Authors must distribute a single, self-contained canonical environment.
-*    **Runtime Delegation:** Simulators supporting massive parallelism are expected to handle environment replication natively at runtime via their own APIs. Authors must not bake thousands of physics-enabled clones into the source file.
+*    **Runtime Delegation:** Simulators supporting massive parallelism are expected to handle environment replication natively at runtime via their own APIs. Authors must not bake arrays of physics-enabled clones into the source file.
 
 ### 1.3 Physics
 *   **Joint Placement:** Asset authors should place the joint prim as a sibling adjacent to the child link it connects, within the scope of the parent link, to ensure self-contained modularity. Note that `UsdPhysicsJoint` prims rely on relational targeting (`body0` and `body1`) rather than hierarchy, which means parsers must reconstruct the kinematic tree exclusively from these relationships.
