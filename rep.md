@@ -83,7 +83,7 @@ As illustrated in Figure 1, assets should be divided into functional layers comp
 
 #### 1.2.2 The Composition Model
 Assets must adhere to the OpenUSD Model Hierarchy to ensure predictable selection and traversal:
-*   **Components:** Idividual distributable assets assets (e.g., a sensor, a box) must have `kind="component"` on their root prim.
+*   **Components:** Individual distributable assets (e.g., a sensor, a box) must have `kind="component"` on their root prim.
 *   **Assemblies:** Aggregates (e.g., a `Warehouse` containing racks) must have `kind="assembly"` or `kind="group"`.
 *   **Granularity:** Authors should use kind="subcomponent" for organizational prims within a component.
 
@@ -108,7 +108,7 @@ OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., e
     *   `string assetInfo:identifier`: A unique, stable identifier for the asset (e.g., a URI or canonical name).
     *   `string assetInfo:version`: A version string (e.g., `"1.0.0"`).
     *   To carry robotics-specific provenance (e.g., URDF package origin, original SDFormat model URI, or component catalog IDs), authors should use a namespaced sub-dictionary: assetInfo["ros"].
-        *Example: `assetInfo["ros"]["package_uri"] = "package://my_robot/urdf/robot.urdf"`.
+        *Example: `assetInfo["ros"]["package_uri"] = "package://my_robot/urdf/robot.urdf"`.*
     *   *Note: This REP aligns with the domain convention requested in the active AOUSD proposal: [Separation of Concerns for Identifiers in USD (PR #105)](https://github.com/PixarAnimationStudios/OpenUSD-proposals/pull/105) Once AOUSD ratifies a standardized mechanism for external identifiers, this REP will adopt it.*
 *   **Path Resolution:** Internal references must use relative paths (`./geo/mesh.usdc`). For distributed, highly interoperable assets, all file dependencies should be self-contained and rely exclusively on relative paths.
 *   **ROS packages:** External dependencies targeting other ROS packages must use the package:// URI scheme. Absolute paths or proprietary schemes (e.g., omniverse://) are prohibited for external package references. Tooling and simulators aiming for ROS interoperability must provide a custom OpenUSD ArResolver plugin to resolve these URIs.
