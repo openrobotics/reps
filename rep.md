@@ -69,16 +69,17 @@ This REP adopts the ASWF Guidelines for Structuring USD Assets.
 As illustrated in Figure 1, assets should be divided into functional layers composed via References and Payloads:
 
 *   **Layer Separation:** Assets must use functional layering (ETL) to isolate core OpenUSD data from simulation and ROS-specific schemas. This prevents "Unknown Schema" errors in standard tools and enables modular updates.
+*   **Layer Encoding:** Schema- and relationship-bearing layers must be authored as ASCII (`.usda`); heavy-data layers as binary Crate (`.usdc`).
 *   **The Base Layer:** The core data must be decomposed into granular, functional files to maximize deduplication and performance:
-    *   `geometries.usd`: Contains pure mesh topology and vertices (no physics, no schemas), typically as `.usdc`.
-    *   `materials.usd`: Contains material and look-dev definitions.
-    *   `instances.usd`: (Optional, recommended): Assembles geometries and materials via references.
-    *   `base.usd`: The pure kinematic hierarchy (Xforms), referencing the underlying instances and geometries without physical or execution logic.
+    *   `geometries.usdc`: Contains pure mesh topology and vertices (no physics, no schemas).
+    *   `materials.usda`: Contains material and look-dev definitions.
+    *   `instances.usda`: (Optional, recommended): Assembles geometries and materials via references.
+    *   `base.usda`: The pure kinematic hierarchy (Xforms), referencing the underlying instances and geometries without physical or execution logic.
 *   **Features (The Domain-Specific Layers):** Domain metadata must be isolated into overlay files, including:
-    *    `physics.usd`: Contains `UsdPhysics` rigid bodies and joints.
-    *    `ros.usd`: Contains the `Ros*API` schemas.
-*   **Entry Point (`[asset_name].usd`):** The final distributed asset must be a lightweight interface layer that uses **Payloads** to load the Features. 
-*   **Proprietary Layer:** Simulator-specific implementations (e.g., proprietary execution graphs) must be limited to what is strictly necessary and confined to a separate proprietary layer (e.g., `isaac.usd`, `o3de.usd`).
+    *    `physics.usda`: Contains `UsdPhysics` rigid bodies and joints.
+    *    `ros.usda`: Contains the `Ros*API` schemas.
+*   **Entry Point (`[asset_name].usda`):** The final distributed asset must be a lightweight interface layer that uses **Payloads** to load the Features.
+*   **Proprietary Layer:** Simulator-specific implementations (e.g., proprietary execution graphs) must be limited to what is strictly necessary and confined to a separate proprietary layer (e.g., `isaac.usda`, `o3de.usda`).
 
 
 #### 1.2.2 The Composition Model
@@ -92,7 +93,7 @@ To guarantee that simulation assets remain self-contained, portable, and predict
 *   **[L] Local:** Primary authoring of overrides and properties on the asset is fully supported.
 *   **[I] Inherits & [S] Specializes:** Asset authors should not rely on `Inherits` or `Specializes` arcs that target class definitions outside the asset's own layer stack for core robot kinematics, physics APIs, or ROS schemas when distributing standalone assets. The inherits-instanceable pattern, where the class prim is defined within the same asset, remains valid and is recommended for applying uniform overrides across instances.
 *   **[V] VariantSets:** Permitted and encouraged for asset reusability (see Section 1.2.4).
-*   **[R] References:** Permitted for logical assembly (e.g., composing a robot by referencing an independent `arm.usd` and `base.usd`).
+*   **[R] References:** Permitted for logical assembly (e.g., composing a robot by referencing an independent `arm.usda` and `base.usda`).
 *   **[P] Payloads (The Payload Pattern):** Heavy data (high-resolution meshes, point clouds, large textures) must be referenced via Payloads rather than standard References. 
     *   Payloads must not encapsulate joint or link prims themselves. The kinematic topology (Prims bearing `PhysicsRigidBodyAPI`, `PhysicsJoint` schemas, and `Ros*API` schemas) must reside in the primarily loaded scene graph (e.g., via Local authoring or standard References). 
     *   The Payload should solely encapsulate the nested geometric and material data. This enables ROS parsers and web converters to traverse the lightweight kinematic tree efficiently without loading heavy buffers.
@@ -103,7 +104,7 @@ OpenUSD `VariantSets` are the normative mechanism for asset reusability (e.g., e
 *   **ROS Interface Resolution:** A change in a variant selection may add or remove Prims containing `Ros*API` schemas (e.g., swapping a generic robot head for a sensor-equipped head). Simulators and tooling must only evaluate and instantiate ROS interfaces that are active within the currently resolved variant state of the stage.
 
 #### 1.2.5 Asset Management
-*   **Default Prim:** All distributable assets must set `defaultPrim` metadata on the root layer, pointing to the asset's primary entrypoint prim. Without it, referencing `@robot.usd@` without an explicit prim path is undefined behavior and the Payload pattern breaks silently.
+*   **Default Prim:** All distributable assets must set `defaultPrim` metadata on the root layer, pointing to the asset's primary entrypoint prim. Without it, referencing `@robot.usda@` without an explicit prim path is undefined behavior and the Payload pattern breaks silently.
 *   **Asset Identification (`assetInfo`):** All distributable assets must populate the `assetInfo` dictionary on the `defaultPrim` with at minimum:
     *   `string assetInfo:identifier`: A unique, stable identifier for the asset (e.g., a URI or canonical name).
     *   `string assetInfo:version`: A version string (e.g., `"1.0.0"`).
@@ -166,8 +167,8 @@ To ensure deterministic contact dynamics across engines, authors must bind a `Us
 
 To guarantee interoperability across different solvers, physical properties and engine-specific parameters must be explicitly decoupled into separate functional layers:
 
-*   **Neutral Physics (`physics.usd`):** A universally shared layer containing exclusively core `UsdPhysics` schemas (rigid bodies, joints, limits, mass properties). This file must strictly adhere to the standard OpenUSD Physics specification and must not contain any vendor-specific extensions.
-*   **Engine Tuning (`physx.usd`, `mujoco.usd`, `isaac.usd`):** Engine-specific parameters (e.g., proprietary solver iterations, specialized friction models, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., `mujoco:`, `isaac:`). These must be strictly isolated within discrete "Proprietary Layers" (Section 1.2.1) and never authored in the baseline simulation payload or neutral physics layer. Authors must strive to minimize this proprietary layer to what is strictly necessary.
+*   **Neutral Physics (`physics.usda`):** A universally shared layer containing exclusively core `UsdPhysics` schemas (rigid bodies, joints, limits, mass properties). This file must strictly adhere to the standard OpenUSD Physics specification and must not contain any vendor-specific extensions.
+*   **Engine Tuning (`physx.usda`, `mujoco.usda`, `isaac.usda`):** Engine-specific parameters (e.g., proprietary solver iterations, specialized friction models, GPU tensors) not covered by core OpenUSD schemas must be explicitly namespaced with a vendor prefix (e.g., `mujoco:`, `isaac:`). These must be strictly isolated within discrete "Proprietary Layers" (Section 1.2.1) and never authored in the baseline simulation payload or neutral physics layer. Authors must strive to minimize this proprietary layer to what is strictly necessary.
 
 ---
 
@@ -205,14 +206,14 @@ def Xform "robot" (
     string ros:context:namespace = "robot_1"
 
     def Xform "camera_left" (
-        references = @./camera_module.usd@
+        references = @./camera_module.usda@
         prepend apiSchemas = ["RosContextAPI"]
     ) {
         string ros:context:namespace = "camera_left"  # overrides "camera" from source
     }
 
     def Xform "camera_right" (
-        references = @./camera_module.usd@
+        references = @./camera_module.usda@
         prepend apiSchemas = ["RosContextAPI"]
     ) {
         string ros:context:namespace = "camera_right"  # overrides "camera" from source
