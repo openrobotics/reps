@@ -134,12 +134,8 @@ OpenUSD's native instancing mechanisms are designed for repetitive visual and st
     * *Kinematic Bodies:* Moving bodies that are animated but not dynamically driven by physics should set the physics:kinematicEnabled attribute to true.
     * *Dummy Frames:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `RosFrameAPI` as defined in Section 2.8.
 *   **Inertia Representation:** Unlike URDF and SDFormat's 6-value symmetric matrix, OpenUSD requires an eigendecomposed inertia tensor. Converters must mathematically decompose the source matrix into physics:diagonalInertia (eigenvalues) and physics:principalAxes (quaternion). This native decomposed form is the strict single source of truth; custom 6-value array attributes must not be authored or parsed.
-*   **Mimic Joints:** Joints whose position is a linear function of another joint (e.g., parallel gripper fingers, coupled mechanisms) must declare the coupling declaratively using `MimicJointAPI`, a **SingleApply** API schema applied to the follower joint. `MimicJointAPI` must only be applied to `UsdPhysicsRevoluteJoint` or `UsdPhysicsPrismaticJoint` prims. The coupling operates on the joint's native positional value.
-    *   `rel mimic:joint`: Relationship to the source joint. Must use a USD relationship (not a string attribute) to ensure correct path remapping under composition arcs. Mimic relationships must form a Directed Acyclic Graph (DAG); chained couplings are valid, but cycles are prohibited.
-    *   `float mimic:multiplier` (Default: `1.0`): Scale factor. `follower_position = multiplier * source_position + offset`.
-    *   `float mimic:offset` (Default: `0.0`): Constant offset in the source joint's native units.
-    *   *Note: UsdPhysics does not currently provide a joint coupling mechanism. This schema fills that gap. Should AOUSD/ASWF standardize an equivalent under `UsdPhysics`, this REP would adopt the upstream schema.*
-*   **Deformable Bodies:** A vendor-neutral schema for deformable bodies is not yet ratified. Assets must isolate deformable soft-body physics into feature layer for specific domain or vendor (see Section 1.2.1). The asset's default variant must provide a rigid-body fallback approximation for interoperability.
+*   **Extended Physics:** Many physics features are missing in `USDPhysics`, including mimic joints, deformable bodies and advanced friction. Authors must use `ExtendedPhysics*` schemas for interoperability, following Section 4.2.2. When interoperable schema is not available, assets must isolate specific feature, e.g. deformable soft-body physics into a feature layer for specific domain or vendor (see Section 1.2.1). 
+
 
 #### 1.3.1 Collisions
 Collision geometries should explicitly specify `purpose="guide"` and `physics:approximation="none"`. To ensure assets function across both standard physics engines and advanced contact-rich solvers (e.g., Newton), assets should employ a "Dual-Fidelity Pattern" utilizing a `collision_fidelity` OpenUSD `VariantSet`:
@@ -309,7 +305,7 @@ If this property is missing, simulators must fall back to using the prim name.
 
 ## 3. Export and Conversion
 
-OpenUSD is a vast standard supporting complex features. To guarantee that assets can be converted to glTF 2.0 and successfully exported to work with lightweight applications and standard ROS tools (e.g., RViz, MoveIt) without mandating native OpenUSD support, assets must adhere to this constrained subset.
+OpenUSD is a vast standard supporting complex features. To guarantee that assets can be converted to glTF 2.0 and successfully exported to work with lightweight applications and standard ROS tools (e.g., RViz, MoveIt), such as for publishing of a URDF string to `/robot_description`, without mandating native OpenUSD support, assets must adhere to this constrained subset.
 
 ### 3.1 Material Portability
 *   **Normative Surface:** Assets must use UsdPreviewSurface as the normative surface definition to ensure a direct mapping to glTF 2.0's pbrMetallicRoughness workflow. Target converters may also support OpenPBR[AOUSD-OPENPBR].
@@ -361,47 +357,68 @@ OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched 
 
 ## 4. The Interoperability Ecosystem
 
-Due to the number and dynamic nature of control and sensor types, these will be handled as extension schemas to interoperability profile compliance. They will be submitted and ratified independently.
+A canonical repository for core schema, extension schemas and compliance tooling is `ros-simulation/openusd-schemas`. 
 
-### 4.1 Schema Registry
+### 4.1 Core ROS Schema Definition
+The normative OpenUSD schema definition for all `Ros*API` schemas is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
 
-A canonical repository for these extensions is `ros-simulation/openusd-schemas`, and the following is mandated:
+
+### 4.2 Schema Registry
+
+Due to the number and dynamic nature of extensions for physics, controls and sensors, they will be handled as extension schemas to interoperability profile compliance. Extension schemas will be submitted and ratified independently. The following is mandated:
+
 - A submission must follow the rules of this REP where applicable, e.g. including declarative parameters that can be implemented accross simulators, and adhering to general rules for sensors and control schemas (e.g. graceful degradation). A submission may include one or more vendor or physic engine specific layers as outlined in Section 1.4.
-- A submission must include addition to Compliance Checker which allows the use of new schema to be validated, a documentation of use, and a minimal example asset.
+- A submission must include addition to Compliance Checker and any other supplementary conversion tools within the repository, which allows the use of new schema to be validated. A submission must also include documentation of use and a minimal example asset.
 
-#### 4.1.1 General Extension Schema Rules
+#### 4.2.1 General Extension Schema Rules
 
 Additional schemas are to be defined through extensions, chiefly for sensors and controls. They must follow these general rules:
 
 *   **Use of Native Schemas:** Schema definitions must leverage core OpenUSD primitives to prevent attribute duplication. For example, `SensorCameraAPI` must apply to a `UsdGeomCamera` to append digital hardware metadata while natively reusing its optical properties. If no native analogue exists, schemas must be applied to a standard `UsdGeomXform`.
 *   **Separation of Transport:** Extension schemas must not include metadata to handle ROS communication (e.g., topic names, QoS). Instead, they should utilize relationships to target distinct transport prims (e.g., `RosTopicAPI`) to expose their data or commands.
+*   **Deprecation Policy:** If the core OpenUSD specification formally ratifies an equivalent schema, the corresponding extension schema will be deprecated. Tooling will subsequently migrate assets to the official core standard.
 
-#### 4.1.2 Control Schemas
+#### 4.2.2 Physics Schemas
+
+To leverage emerging simulation features without violating vendor-neutrality (Section 1.4), the registry will host physics extension schemas based on upstream proposals (e.g., from Linux Foundation Newton USD Schemas[NEWTON-SCHEMAS] or AOUSD working groups), as "Incubating Schemas". These schemas must adhere to the following rules:
+
+*   **Namespace:** To prevent collisions with core OpenUSD updates, incubating physics schemas must use the `ExtendedPhysics` class prefix and the `ext_physics:` property prefix. Vendor prefixes (e.g., `newton:`) and core prefixes (e.g., `physics:`) are prohibited.
+*   **Translation:** OpenUSD does not natively support schema aliasing. Assets generated by tools using vendor-specific staging schemas must be processed via ecosystem tooling (e.g., automated compliance fixers) to replace them with their `ExtendedPhysics*` equivalents prior to distribution.
+
+
+#### 4.2.3 Control Schemas
 
 In addition to general extension schema rules, control interfaces and controllers must follow these rules:
 *   **Explicit Targeting:** Controllers should be decoupled from the physical rigid-body hierarchy: authors should place them on dedicated logical prims (e.g., `/Robot/Controllers`) and explicitly target their actuated mechanisms. Simulators must not rely on Xform scene graph nesting to infer a controller's scope. Controllers must declare targets using OpenUSD relationships (`rel`) or standard `UsdCollectionAPI` collections.
 *   **Actuation via Physics:** Control schemas should interface with dynamic bodies strictly through the simulation's physics pipeline. Position, velocity, and effort targets must be routed through normative OpenUSD dynamics paradigms (e.g., `UsdPhysicsDriveAPI`) or universally ratified extension schemas, deferring to isolated vendor extensions only when a ratified standard for the required actuation modality does not exist. Controllers that directly manipulate spatial transforms should only actuate prims where `physics:kinematicEnabled = true`. Control schemas should not handle simulator-level state changes (e.g., native simulator state APIs or ROS `simulation_interfaces`), including resets for RL training or entity state manipulation.
 *   **Runtime selection:** A single asset may contain multiple, mutually exclusive control paradigms for the same hardware (e.g., trajectory control vs. direct effort control). While `VariantSets` remain the standard for structural hardware changes, simulators should provide dynamic lifecycle management of controllers to support runtime switching. The asset's authored state must prevent write conflicts at load time by ensuring controllers actuating the same targets are not simultaneously active (e.g., via a `bool control:starts_enabled` schema property).
 
-#### 4.1.3 Sensor Schemas
+#### 4.2.4 Sensor Schemas
 
 In addition to general extension schema rules, sensor schemas must follow these rules:
 *   **Ground Truth:** Sensor schemas must emulate measurable phenomena to ensure valid Software-in-the-Loop (SiL) testing. Simulator-generated Ground Truth artifacts (e.g., semantic segmentations, bounding boxes) must not be bundled into physical sensor schemas; they should be explicitly requested via dedicated annotator schemas.
 *   **Traversal:** Sensor schemas must be applied directly to the `UsdGeomXform` or `UsdGeomCamera` defining their physical origin and local coordinate frame. To ensure efficient parser discovery, these prims must reside in the asset's lightweight, traversable kinematic hierarchy.
 *   **Graceful Degradation:** Sensor schemas must define a functional, universal baseline of parameters. Advanced, engine-specific behaviors (e.g., proprietary rendering profiles, custom noise models) must be authored exclusively via vendor-namespaced custom attributes (e.g., `isaac:`, `gazebo:`). Simulators must safely ignore unrecognized namespaces and gracefully fall back to the universal baseline.
 
-### 4.2 Compliant Assets 
+### 4.3 Compliant Assets 
 
-A canonincal repository of open-source, compliant simulation assets is to be established as `ros-simulation/openusd-assets`. These assets will have payloads hosted independently (e.g. in a dedicated repository such as Hugging Face) and must pass the Compliance Checker.
+A canonical repository of open-source, compliant simulation assets is to be established as `ros-simulation/openusd-assets`. These assets will have payloads hosted independently (e.g. in a dedicated repository such as Hugging Face) and must pass the Compliance Checker.
 
 
 ## Tools
 
-### Core Schema Definition
-The normative OpenUSD schema definition for all `Ros*API` schemas is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
+The following tools will be provided within `ros-simulation/openusd-schemas` repository alongside core and extension schemas:
 
 ### Compliance Checker
 A REP-XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for every violation or non-conformance.
+
+### Supplementary migration tools
+
+A compliance fixer (e.g., `rep_sanitizer`) will be provider for common issues that can be handled by automated scripting, including:
+
+*   **Schema Translation:** Stripping proprietary staging schemas and replacing them with their neutral `ExtendedPhysics` equivalents (see Section 4.2.2).
+*   **Transform Standardization:** Automatically decomposing baked 4x4 CAD matrices (`xformOp:transform`) into the mandated `translate` and `orient` operations (Section 1.1).
+*   **Vendor Isolation:** Scanning for and extracting engine-specific properties (e.g., `isaac:`, `mujoco:`) from the baseline payload into isolated proprietary overlays (Section 1.4).
 
 
 ## References
@@ -412,6 +429,7 @@ A REP-XXXX compliance checker is to be developed and shared with the community. 
 *   **[REP-2003]** ROS Enhancement Proposal 2003, "Sensor Data and Map QoS Settings".
 *   **[GLTF-2.0]** Khronos Group, "glTF 2.0 Specification".
 *   **[GLTF-EXT-INSTANCING]** Khronos Group, "EXT_mesh_gpu_instancing Extension Specification".
+*   **[NEWTON-SCHEMAS]** Linux Foundation Newton Project. "Newton USD Schemas". URL: `https://github.com/newton-physics/newton-usd-schemas`
 
 ## Copyright
 This document will be placed in the public domain upon being submitted as PR to a REP proposal by original authors. This text will be changed to "This document is placed in the public domain".
