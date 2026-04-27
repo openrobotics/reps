@@ -174,7 +174,7 @@ To guarantee interoperability across different solvers, physical properties and 
 
 ## 2. ROS Integration Schemas
 
-Neither OpenUSD nor glTF 2.0 currently standardize the specification of ROS interfaces. This section defines a set of declarative, engine-agnostic API schemas (of type `SingleApply`). Simulators are responsible for reading these schemas and generating their respective underlying execution logic.
+Neither OpenUSD nor glTF 2.0 currently standardize the specification of ROS interfaces. This section defines a set of declarative, engine-agnostic API schemas (of type `SingleApply`). Simulators are responsible for reading these schemas and generating their respective underlying execution logic. Assets must not duplicate the same ROS interface in another form (e.g., a hand-authored execution graph publishing the same topic alongside the authored `Ros*API` schema); persisted runtime artifacts belong in the simulator's proprietary layer (Section 1.2.1), not in the neutral ROS layer.
 
 ### 2.1 The ROS Context (`RosContextAPI`)
 The root prim of a ROS-interfaced simulation asset may define its context namespace.
