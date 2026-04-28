@@ -8,6 +8,15 @@
     ]
 )
 
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdExtendedPhysics"
+        string libraryPath       = "usdExtendedPhysics"
+    }
+)
+{
+}
+
 # ======================================================================
 # Extended Physics Schemas
 #
@@ -19,8 +28,13 @@
 
 # Schemas adapted from Newton upstream: https://github.com/newton-physics/newton-usd-schemas
 
-class ExtendedPhysicsMaterialAPI "ExtendedPhysicsMaterialAPI" (
-    apiSchemas = ["PhysicsMaterialAPI"]
+class "ExtendedPhysicsMaterialAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        string className = "MaterialAPI"
+        token apiSchemaType = "singleApply"
+    }
+    prepend apiSchemas = ["PhysicsMaterialAPI"]
     doc = """ExtendedPhysicsMaterialAPI applies on top of a Material, providing extra physical material attributes.
 
     By applying this schema, the prim also inherits the `PhysicsMaterialAPI` schema."""
@@ -51,7 +65,12 @@ class ExtendedPhysicsMaterialAPI "ExtendedPhysicsMaterialAPI" (
     )
 }
 
-class ExtendedPhysicsMimicAPI "ExtendedPhysicsMimicAPI" (
+class "ExtendedPhysicsMimicAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        string className = "MimicAPI"
+        token apiSchemaType = "singleApply"
+    }
     doc = """ExtendedPhysicsMimicAPI applies on top of a PhysicsJoint, adding additional constraints to mimic the DOFs of another joint.
 
     A mimic constraint enforces that `joint0 = offset + multiplier * joint1` for the joint DOFs,
@@ -92,7 +111,12 @@ class ExtendedPhysicsMimicAPI "ExtendedPhysicsMimicAPI" (
 }
 
 
-class ExtendedPhysicsActuatorAPI "ExtendedPhysicsActuatorAPI" (
+class "ExtendedPhysicsActuatorAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        string className = "ActuatorAPI"
+        token apiSchemaType = "singleApply"
+    }
     doc = """Defines a physical actuator that computes effort to apply to a joint.
 
     An actuator computes effort (i.e. force/torque for linear/rotational actuators) to apply
@@ -125,11 +149,16 @@ class ExtendedPhysicsActuatorAPI "ExtendedPhysicsActuatorAPI" (
     )
 }
 
-class ExtendedPhysicsActuatorClampingBaseAPI "ExtendedPhysicsActuatorClampingBaseAPI" (
+class "ExtendedPhysicsActuatorClampingBaseAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        string className = "ActuatorClampingBaseAPI"
+        token apiSchemaType = "singleApply"
+    }
     doc = """Base API for all actuator clamping strategies.
 
-    Any number of ExtendedPhysicsActuatorClampingBaseAPI derived schemas 
-    (e.g.  ExtendedPhysicsMaxEffortClampingAPI) may be applied to a ExtendedPhysicsActuator
+    Any number of ExtendedPhysicsActuatorClampingBaseAPI derived schemas
+    (e.g.  ExtendedPhysicsMaxEffortClampingAPI) may be applied to an ExtendedPhysicsActuatorAPI
     to constrain actuator output effort (i.e. force/torque for linear/rotational actuators).
     The order of clamping is not guaranteed to be preserved thus clamping operations must be order independent.
 
@@ -139,8 +168,13 @@ class ExtendedPhysicsActuatorClampingBaseAPI "ExtendedPhysicsActuatorClampingBas
 {
 }
 
-class ExtendedPhysicsMaxEffortClampingAPI "ExtendedPhysicsMaxEffortClampingAPI" (
-    apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
+class "ExtendedPhysicsMaxEffortClampingAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        string className = "MaxEffortClampingAPI"
+        token apiSchemaType = "singleApply"
+    }
+    prepend apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
     doc = """Symmetric clamp on actuator output effort.
 
     Clamps the actuator output to the range [-maxEffort, +maxEffort].
@@ -162,8 +196,13 @@ class ExtendedPhysicsMaxEffortClampingAPI "ExtendedPhysicsMaxEffortClampingAPI" 
     )
 }
 
-class ExtendedPhysicsDCMotorClampingAPI "ExtendedPhysicsDCMotorClampingAPI" (
-    apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
+class "ExtendedPhysicsDCMotorClampingAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        string className = "DCMotorClampingAPI"
+        token apiSchemaType = "singleApply"
+    }
+    prepend apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
     doc = """DC motor four-quadrant effort clamp.
 
     A four-quadrant effort clamp based on the DC motor effort-speed characteristic:
@@ -222,8 +261,13 @@ class ExtendedPhysicsDCMotorClampingAPI "ExtendedPhysicsDCMotorClampingAPI" (
     )
 }
 
-class ExtendedPhysicsPositionBasedClampingAPI "ExtendedPhysicsPositionBasedClampingAPI" (
-    apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
+class "ExtendedPhysicsPositionBasedClampingAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        string className = "PositionBasedClampingAPI"
+        token apiSchemaType = "singleApply"
+    }
+    prepend apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
     doc = """Position-dependent effort clamping via lookup table.
 
     Provides position-dependent effort limits interpolated from a lookup table
