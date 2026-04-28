@@ -1,0 +1,126 @@
+#usda 1.0
+(
+    "ROS Integration Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic API schemas for the differential"
+    " drive controller as specified in REP-XXXX, Section 1.2.1.2."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdRosControlDiffDrive"
+        string libraryPath       = "usdRosControlDiffDrive"
+        string libraryPrefix     = "usdRosControlDiffDrive"
+        dictionary libraryTokens = {
+        }
+    }
+)
+{
+}
+
+# ======================================================================
+# RosControlDiffDriveAPI
+# ======================================================================
+
+class "RosControlDiffDriveAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlDiffDriveAPI"
+    }
+    doc = """Controls a differential drive robot via geometry_msgs/Twist messages.
+
+    Subscribes to a Twist topic, converts commanded linear and angular
+    velocities into individual wheel velocities, and applies them to
+    wheel joint prims with UsdPhysicsDriveAPI. Publishes odometry data
+    as nav_msgs/Odometry. Implementation should follow logic similar to
+    the diff_drive_controller in ros2_controllers.
+    """
+)
+{
+    rel ros:diff_drive:subscriber (
+        customData = {
+            string apiName = "subscriber"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        subscription for geometry_msgs/Twist velocity commands."""
+    )
+
+    rel ros:diff_drive:odom (
+        customData = {
+            string apiName = "odom"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        publisher for nav_msgs/Odometry data."""
+    )
+
+    rel ros:diff_drive:left_wheels (
+        customData = {
+            string apiName = "leftWheels"
+        }
+        doc = """References to prims with UsdPhysicsDriveAPI representing
+        the left wheel joints."""
+    )
+
+    rel ros:diff_drive:right_wheels (
+        customData = {
+            string apiName = "rightWheels"
+        }
+        doc = """References to prims with UsdPhysicsDriveAPI representing
+        the right wheel joints."""
+    )
+
+    uniform double ros:diff_drive:wheel_separation (
+        customData = {
+            string apiName = "wheelSeparation"
+        }
+        doc = """Distance between the left and right wheel contact points
+        in meters."""
+    )
+
+    uniform double ros:diff_drive:wheel_radius (
+        customData = {
+            string apiName = "wheelRadius"
+        }
+        doc = """Radius of the wheels in meters."""
+    )
+
+    uniform double ros:diff_drive:cmd_vel_timeout = 0.5 (
+        customData = {
+            string apiName = "cmdVelTimeout"
+        }
+        doc = """Timeout in seconds after which a velocity command is
+        considered stale and wheel velocities are zeroed."""
+    )
+
+    uniform double ros:diff_drive:linear:x:max_velocity (
+        customData = {
+            string apiName = "linearXMaxVelocity"
+        }
+        doc = """Maximum linear velocity along the X axis in m/s."""
+    )
+
+    uniform double ros:diff_drive:linear:x:max_acceleration (
+        customData = {
+            string apiName = "linearXMaxAcceleration"
+        }
+        doc = """Maximum linear acceleration along the X axis in m/s²."""
+    )
+
+    uniform double ros:diff_drive:angular:z:max_velocity (
+        customData = {
+            string apiName = "angularZMaxVelocity"
+        }
+        doc = """Maximum angular velocity around the Z axis in rad/s."""
+    )
+
+    uniform double ros:diff_drive:angular:z:max_acceleration (
+        customData = {
+            string apiName = "angularZMaxAcceleration"
+        }
+        doc = """Maximum angular acceleration around the Z axis in rad/s²."""
+    )
+}

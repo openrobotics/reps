@@ -1,0 +1,57 @@
+#usda 1.0
+(
+    "ROS Integration Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic API schemas for the rigid body"
+    " twist controller as specified in REP-XXXX, Section 1.2.1.1."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdRosControlRigidBodyTwist"
+        string libraryPath       = "usdRosControlRigidBodyTwist"
+        string libraryPrefix     = "usdRosControlRigidBodyTwist"
+        dictionary libraryTokens = {
+        }
+    }
+)
+{
+}
+
+# ======================================================================
+# RosControlRigidBodyTwistAPI
+# ======================================================================
+
+class "RosControlRigidBodyTwistAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlRigidBodyTwistAPI"
+    }
+    doc = """Controls a rigid body via geometry_msgs/Twist messages.
+
+    Subscribes to a Twist topic and applies the commanded linear and
+    angular velocities directly to a rigid body in the physics engine,
+    with optional velocity and acceleration limits.
+    """
+)
+{
+    rel ros:rigid_body_twist:subscriber (
+        customData = {
+            string apiName = "subscriber"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        subscription for geometry_msgs/Twist control messages."""
+    )
+
+    rel ros:rigid_body_twist:body (
+        customData = {
+            string apiName = "body"
+        }
+        doc = """Reference to a prim with UsdPhysicsRigidBodyAPI to which
+        the commanded velocities are applied."""
+    )
+}

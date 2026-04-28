@@ -1,0 +1,43 @@
+#usda 1.0
+(
+    "ROS Integration Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic API schemas for ROS external"
+    " control interfaces as specified in REP-XXXX, Section 1.1."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdRosControlExternal"
+        string libraryPath       = "usdRosControlExternal"
+        string libraryPrefix     = "usdRosControlExternal"
+        dictionary libraryTokens = {
+        }
+    }
+)
+{
+}
+
+# ======================================================================
+# RosControlExternalAPI
+# ======================================================================
+
+class "RosControlExternalAPI" (
+    inherits = </APISchemaBase>
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlExternalAPI"
+    }
+    doc = """Base schema for exposing robot control interfaces to external control algorithms.
+
+    Applied (via 'prepend apiSchemas') by simulator-specific schemas to
+    identify prims whose joint state and command interfaces should be
+    exposed to an external control entity (e.g. a ros2_control
+    hardware_interface plugin, an inter-process controller, or a
+    hardware-in-the-loop connection).
+    """
+)
+{
+}

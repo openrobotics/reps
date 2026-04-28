@@ -1,0 +1,83 @@
+#usda 1.0
+(
+    "ROS Integration Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic API schemas for the joint"
+    " trajectory controller as specified in REP-XXXX, Section 1.2.1.3."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdRosControlJointTrajectory"
+        string libraryPath       = "usdRosControlJointTrajectory"
+        string libraryPrefix     = "usdRosControlJointTrajectory"
+        dictionary libraryTokens = {
+        }
+    }
+)
+{
+}
+
+# ======================================================================
+# RosControlJointTrajectoryAPI
+# ======================================================================
+
+class "RosControlJointTrajectoryAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlJointTrajectoryAPI"
+    }
+    doc = """Executes joint trajectories via control_msgs/FollowJointTrajectory actions.
+
+    Accepts action goals and commands the simulator to follow the
+    specified joint trajectory. Implementation should follow logic
+    similar to the joint_trajectory_controller in ros2_controllers.
+    """
+)
+{
+    rel ros:joint_trajectory:server (
+        customData = {
+            string apiName = "server"
+        }
+        doc = """Reference to a prim with RosActionAPI configured as a
+        server for control_msgs/FollowJointTrajectory action goals."""
+    )
+
+    rel ros:joint_trajectory:command_joints (
+        customData = {
+            string apiName = "commandJoints"
+        }
+        doc = """References to prims with UsdPhysicsJoint representing
+        the joints to be commanded along the trajectory. Simulators must
+        use the ros:joint:name custom property for joint name mapping,
+        falling back to the prim name if absent."""
+    )
+
+    uniform double ros:joint_trajectory:action_monitor_rate (
+        customData = {
+            string apiName = "actionMonitorRate"
+        }
+        doc = """Frequency in Hz at which trajectory execution progress
+        is monitored."""
+    )
+
+    uniform double ros:joint_trajectory:stopped_velocity_tolerance (
+        customData = {
+            string apiName = "stoppedVelocityTolerance"
+        }
+        doc = """Velocity tolerance at the end of the trajectory below
+        which the controlled system is considered stopped."""
+    )
+
+    uniform double ros:joint_trajectory:timeout (
+        customData = {
+            string apiName = "timeout"
+        }
+        doc = """Maximum time in seconds allowed to reach the trajectory
+        goal before the action is aborted."""
+    )
+}

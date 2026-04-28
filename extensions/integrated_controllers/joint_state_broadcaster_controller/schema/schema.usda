@@ -1,0 +1,58 @@
+#usda 1.0
+(
+    "ROS Integration Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic API schemas for the joint state"
+    " broadcaster controller as specified in REP-XXXX, Section 1.2.1.4."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+over "GLOBAL" (
+    customData = {
+        string libraryName       = "usdRosControlJointStateBroadcaster"
+        string libraryPath       = "usdRosControlJointStateBroadcaster"
+        string libraryPrefix     = "usdRosControlJointStateBroadcaster"
+        dictionary libraryTokens = {
+        }
+    }
+)
+{
+}
+
+# ======================================================================
+# RosControlJointStateBroadcasterAPI
+# ======================================================================
+
+class "RosControlJointStateBroadcasterAPI" (
+    inherits = </APISchemaBase>
+    prepend apiSchemas = ["RosControlIntegratedAPI"]
+    customData = {
+        token apiSchemaType = "singleApply"
+        string className = "RosControlJointStateBroadcasterAPI"
+    }
+    doc = """Reads joint states and publishes them as sensor_msgs/JointState messages.
+
+    Implementation should follow logic similar to the
+    joint_state_broadcaster in ros2_controllers.
+    """
+)
+{
+    rel ros:joint_state_broadcaster:publisher (
+        customData = {
+            string apiName = "publisher"
+        }
+        doc = """Reference to a prim with RosTopicAPI configured as a
+        publisher for sensor_msgs/JointState messages."""
+    )
+
+    rel ros:joint_state_broadcaster:joints (
+        customData = {
+            string apiName = "joints"
+        }
+        doc = """References to prims with UsdPhysicsJoint representing
+        the joints whose states are to be broadcast. Simulators must use
+        the ros:joint:name custom property for joint name mapping,
+        falling back to the prim name if absent."""
+    )
+}
