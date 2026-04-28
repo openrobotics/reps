@@ -1,0 +1,255 @@
+#usda 1.0
+(
+    "Extended Physics Schemas for OpenUSD Simulation Asset Interoperability."
+    " Defines declarative, engine-agnostic physics features, "
+    " meant to extend OpenUSD Physics while following REP-XXXX rules."
+    subLayers = [
+        @usd/schema.usda@
+    ]
+)
+
+# ======================================================================
+# Extended Physics Schemas
+#
+# Physics extension schemas are leveraging emerging simulation features
+# without violating vendor-neutrality. They are meant to be 
+# "Incubating Schemas", based on upstream proposals and pending inclusion
+# into the OpenUSD standard.
+# ======================================================================
+
+# Schemas adapted from Newton upstream: https://github.com/newton-physics/newton-usd-schemas
+
+class ExtendedPhysicsMaterialAPI "ExtendedPhysicsMaterialAPI" (
+    apiSchemas = ["PhysicsMaterialAPI"]
+    doc = """ExtendedPhysicsMaterialAPI applies on top of a Material, providing extra physical material attributes.
+
+    By applying this schema, the prim also inherits the `PhysicsMaterialAPI` schema."""
+)
+{
+    float ext_physics:material:torsionalFriction = 0.25 (
+        doc = """Torsional friction coefficient (resistance to spinning at a contact point).
+
+        Range: [0, inf)
+        Units: dimensionless"""
+        limits = {
+            dictionary hard = {
+                float minimum = 0
+            }
+        }
+    )
+
+    float ext_physics:material:rollingFriction = 0.0005 (
+        doc = """Rolling friction coefficient (resistance to rolling motion).
+
+        Range: [0, inf)
+        Units: dimensionless"""
+        limits = {
+            dictionary hard = {
+                float minimum = 0
+            }
+        }
+    )
+}
+
+class ExtendedPhysicsMimicAPI "ExtendedPhysicsMimicAPI" (
+    doc = """ExtendedPhysicsMimicAPI applies on top of a PhysicsJoint, adding additional constraints to mimic the DOFs of another joint.
+
+    A mimic constraint enforces that `joint0 = offset + multiplier * joint1` for the joint DOFs,
+    where `joint0` is this joint (the follower) and `joint1` (the leader) is specified via the `ext_physics:mimic:joint` relationship.
+
+    The behavior on multi-DOF joints is undefined. The mimic constraint will be applied to each DOF independently,
+    but as the coefficients are shared across all DOFs, the units for translational and rotational DOFs will be mixed.
+    Therefore, it is recommended to only use this API on single-DOF joints.
+    """
+)
+{
+    bool ext_physics:mimic:enabled = true (
+        doc = """Whether the mimic constraint is active.
+
+        When disabled, the follower joint moves independently, as though the mimic constraint was not applied."""
+    )
+
+    rel ext_physics:mimic:joint (
+        doc = "Joint that will be mimicked."
+    )
+
+    float ext_physics:mimic:offset = 0.0 (
+        doc = """Offset added after scaling the leader joint's position/angle.
+
+        Range: (-inf, inf)
+        Units: distance or degrees (matches the joint type for single-DOF joints)"""
+    )
+
+    float ext_physics:mimic:multiplier = 1.0 (
+        doc = """Scale factor applied to the leader joint's position/angle.
+
+        A value of 1.0 means the follower tracks the leader exactly (plus `ext_physics:mimic:offset`),
+        while negative values reverse the direction.
+
+        Range: (-inf, inf)
+        Units: dimensionless"""
+    )
+}
+
+
+class ExtendedPhysicsActuatorAPI "ExtendedPhysicsActuatorAPI" (
+    doc = """Defines a physical actuator that computes effort to apply to a joint.
+
+    An actuator computes effort (i.e. force/torque for linear/rotational actuators) to apply
+    to a PhysicsRevoluteJoint or PhysicsPrismaticJoint specified via the `ext_physics:actuator:targets`
+    relationship. Future versions may expand the set of valid target types.
+
+    Control schemas should use it to drive the actuator, 
+    and limits are applied through `ExtendedPhysicsActuatorClampingBaseAPI`.
+
+    Note: Extended Physics actuators use radians, diverging from UsdPhysicsDriveAPI which uses degrees.
+    Actuator attributes are also documented in joint space, though this is not enforced,
+    and users may scale attributes to fit their own convention by updating their parser
+    and/or integration code accordingly.
+
+
+    """
+)
+{
+    rel ext_physics:actuator:targets (
+        doc = """The joint driven by this actuator.
+
+        The relationship must be authored. Parsers should raise an error if no target
+        is provided; users should deactivate the prim if they want to disable the actuator.
+
+        Currently only the first target is honored, and it must identify either a
+        `PhysicsRevoluteJoint` or `PhysicsPrismaticJoint`.
+        
+        Multi-DOF PhysicsJoints are not supported, even when locked via LimitAPIs to a single axis.
+        """
+    )
+}
+
+class ExtendedPhysicsActuatorClampingBaseAPI "ExtendedPhysicsActuatorClampingBaseAPI" (
+    doc = """Base API for all actuator clamping strategies.
+
+    Any number of ExtendedPhysicsActuatorClampingBaseAPI derived schemas 
+    (e.g.  ExtendedPhysicsMaxEffortClampingAPI) may be applied to a ExtendedPhysicsActuator
+    to constrain actuator output effort (i.e. force/torque for linear/rotational actuators).
+    The order of clamping is not guaranteed to be preserved thus clamping operations must be order independent.
+
+    Check prim.HasAPI('ExtendedPhysicsActuatorClampingBaseAPI') to detect whether any clamping is present.
+    """
+)
+{
+}
+
+class ExtendedPhysicsMaxEffortClampingAPI "ExtendedPhysicsMaxEffortClampingAPI" (
+    apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
+    doc = """Symmetric clamp on actuator output effort.
+
+    Clamps the actuator output to the range [-maxEffort, +maxEffort].
+    """
+)
+{
+    float ext_physics:clamp_effort:maxEffort = inf (
+        doc = """Maximum output effort limit (in joint space).
+
+        The actuator output is clamped to the range [-maxEffort, +maxEffort].
+
+        Range: [0, inf)
+        Units: force or torque"""
+        limits = {
+            dictionary hard = {
+                float minimum = 0
+            }
+        }
+    )
+}
+
+class ExtendedPhysicsDCMotorClampingAPI "ExtendedPhysicsDCMotorClampingAPI" (
+    apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
+    doc = """DC motor four-quadrant effort clamp.
+
+    A four-quadrant effort clamp based on the DC motor effort-speed characteristic:
+
+        effort_max(vel) = min(saturationEffort * (1 - vel / velocityLimit),  maxMotorEffort)
+        effort_min(vel) = max(saturationEffort * (-1 - vel / velocityLimit), -maxMotorEffort)
+
+    At zero velocity the motor can produce up to saturationEffort (capped by maxMotorEffort).
+    As velocity approaches velocityLimit, available effort drops to zero in both directions.
+    """
+)
+{
+    float ext_physics:clamp_motor:maxEffort = inf (
+        doc = """Effort limit for the effort-speed curve (in joint space).
+
+        Caps the velocity-dependent effort envelope.
+
+        Range: [0, inf)
+        Units: force or torque"""
+        limits = {
+            dictionary hard = {
+                float minimum = 0
+            }
+        }
+    )
+
+    float ext_physics:clamp_motor:saturationEffort = inf (
+        doc = """Peak motor effort at stall (zero velocity).
+
+        This is the maximum effort the motor can produce when not spinning,
+        before being capped by maxEffort.
+
+        Range: [0, inf)
+        Units: force or torque"""
+        limits = {
+            dictionary hard = {
+                float minimum = 0
+            }
+        }
+    )
+
+    float ext_physics:clamp_motor:velocityLimit = inf (
+        doc = """Maximum no-load joint velocity for the effort-speed curve.
+
+        At this velocity, the motor can produce zero effort in the direction
+        of motion due to losses such as back-EMF. A value of inf disables the effort-speed
+        saturation effect.
+
+        Range: (0, inf)
+        Units: distance / seconds or radians / seconds"""
+        limits = {
+            dictionary hard = {
+                float minimum = 0
+            }
+        }
+    )
+}
+
+class ExtendedPhysicsPositionBasedClampingAPI "ExtendedPhysicsPositionBasedClampingAPI" (
+    apiSchemas = ["ExtendedPhysicsActuatorClampingBaseAPI"]
+    doc = """Position-dependent effort clamping via lookup table.
+
+    Provides position-dependent effort limits interpolated from a lookup table
+    to model actuators whose maximum output effort varies with joint position.
+
+    Sampling rules:
+    - Inputs strictly between adjacent (position, effort) entries are linearly interpolated.
+    - Inputs at or below ext_physics:clamp_position:lookupPositions[0] clamp to ext_physics:clamp_position:lookupEfforts[0].
+    - Inputs at or above ext_physics:clamp_position:lookupPositions[-1] clamp to ext_physics:clamp_position:lookupEfforts[-1].
+    - For rotational actuators, positions do not wrap periodically.
+    """
+)
+{
+    float[] ext_physics:clamp_position:lookupPositions = [] (
+        doc = """Sorted joint positions for the effort lookup table.
+
+        Must be monotonically increasing and the same length as ext_physics:clamp_position:lookupEfforts.
+
+        Units: distance or radians"""
+    )
+
+    float[] ext_physics:clamp_position:lookupEfforts = [] (
+        doc = """Maximum output effort values corresponding to each entry in ext_physics:clamp_position:lookupPositions.
+
+        Must be the same length as ext_physics:clamp_position:lookupPositions.
+
+        Units: force or torque"""
+    )
+}
