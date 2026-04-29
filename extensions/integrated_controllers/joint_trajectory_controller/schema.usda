@@ -12,6 +12,7 @@ over "GLOBAL" (
     customData = {
         string libraryName       = "usdRosControlJointTrajectory"
         string libraryPath       = "usdRosControlJointTrajectory"
+        string libraryPrefix     = "Usd"
         dictionary libraryTokens = {
         }
     }
