@@ -1,17 +1,18 @@
-# REP XXXX -- OpenUSD Conventions for Simulation Asset Interoperability
 
-| Field | Value |
-| :--- | :--- |
-| **REP** | XXXX |
-| **Title** | OpenUSD Conventions for Simulation Asset Interoperability |
-| **Authors** | Adam Dabrowski, Mateusz Zak, Michal Pelka (Robotec.ai), Ayush Ghosh, Renato Gasoto (NVIDIA), Franco Cipollone (Ekumen) |
-| **PMC Sponsor** | Michael Carroll <mjcarroll@intrinsic.ai> |
-| **PMC** | ROS | 
-| **Status** | Draft |
-| **Category** | Standard |
-| **Content-Type** | text/markdown |
-| **Created** | 2026-03-03 |
-| **Requires** | REP 103, REP 105, OpenUSD Core Spec v1.0.1 |
+---
+layout: post
+REP: 0158:2026
+title: OpenUSD Conventions for Simulation Asset Interoperability
+authors: Adam Dabrowski, Mateusz Zak, Michal Pelka (Robotec.ai), Ayush Ghosh, Renato Gasoto (NVIDIA), Franco Cipollone (Ekumen)
+PMC Sponsor: Michael Carroll <mjcarroll@intrinsic.ai>
+PMCs: ROS
+discussion: Pending
+tag: Draft
+category: Standard
+date: 2026-03-03
+requires: REP 103, REP 105
+pin: true
+---
 
 ## Abstract
 
@@ -408,22 +409,6 @@ In addition to general extension schema rules, sensor schemas must follow these 
 
 A canonical repository of open-source, compliant simulation assets is to be established as `ros-simulation/openusd-assets`. These assets will have payloads hosted independently (e.g. in a dedicated repository such as Hugging Face) and must pass the Compliance Checker.
 
-
-## Implementation
-
-This REP is implemented through the core schema and the registry described in Section 4, as well as tools to be provided within `ros-simulation/openusd-schemas` repository:
-
-### Compliance Checker
-A REP-XXXX compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for every violation or non-conformance.
-
-### Supplementary migration tools
-
-A compliance fixer (e.g., `rep_sanitizer`) will be provided for common issues that can be handled by automated scripting, including:
-
-*   **Schema Translation:** Stripping proprietary staging schemas and replacing them with their neutral `ExtendedPhysics` equivalents (see Section 4.2.2).
-*   **Transform Standardization:** Automatically decomposing baked 4x4 CAD matrices (`xformOp:transform`) into the mandated `translate` and `orient` operations (Section 1.1).
-*   **Vendor Isolation:** Scanning for and extracting engine-specific properties (e.g., `isaac:`, `mujoco:`) from the baseline payload into isolated proprietary overlays (Section 1.4).
-
 ## Rationale
 
 - **Why OpenUSD?** This REP does not argue against any other formats. OpenUSD is useful for robotics due to:
@@ -441,6 +426,21 @@ The standard introduced by this REP is a subject of automation through complianc
 ### Documentation Updates
 
 -  **ROS Tutorials->Simulators:** add a new chapter on interoperable assets and cross-reference the compliant asset repository.
+
+## Implementation
+
+This REP is implemented through the core schema and the registry described in Section 4, as well as tools to be provided within `ros-simulation/openusd-schemas` repository:
+
+### Compliance Checker
+A REP compliance checker is to be developed and shared with the community. The tool will provide validation of all REP recommendations for OpenUSD assets and supply actionable feedback for the user for every violation or non-conformance.
+
+### Supplementary migration tools
+
+A compliance fixer (e.g., `rep_sanitizer`) will be provided for common issues that can be handled by automated scripting, including:
+
+*   **Schema Translation:** Stripping proprietary staging schemas and replacing them with their neutral `ExtendedPhysics` equivalents (see Section 4.2.2).
+*   **Transform Standardization:** Automatically decomposing baked 4x4 CAD matrices (`xformOp:transform`) into the mandated `translate` and `orient` operations (Section 1.1).
+*   **Vendor Isolation:** Scanning for and extracting engine-specific properties (e.g., `isaac:`, `mujoco:`) from the baseline payload into isolated proprietary overlays (Section 1.4).
 
 
 ## References
