@@ -17,4 +17,4 @@ use it for mapping trajectory points to joints in the simulator.
 ## Tools
 
 ### Schema Definition
-The normative OpenUSD schema definition for `RosControlJointTrajectoryAPI` is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
+The normative OpenUSD schema definition for `RosControlJointTrajectoryAPI` is provided in `schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.

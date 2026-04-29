@@ -29,8 +29,8 @@ The implementation should support multi-robot simulation and control by leveragi
 
 ## Controller Schemas
 
-Individual controllers have their schema definitions in `<controller_name>/schema/schema.usda`. The sibling directories of this file each contain one such controller.
+Individual controllers have their schema definitions in `<controller_name>/schema.usda`. The sibling directories of this file each contain one such controller.
 
 ## Schema Definition
 
-The OpenUSD schema definition for `RosControlIntegratedAPI` is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
+The OpenUSD schema definition for `RosControlIntegratedAPI` is provided in `schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.

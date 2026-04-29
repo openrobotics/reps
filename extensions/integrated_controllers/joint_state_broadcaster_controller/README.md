@@ -12,4 +12,4 @@ property of the joint prims and use it for mapping joints in the simulator to th
 ## Tools
 
 ### Schema Definition
-The normative OpenUSD schema definition for `RosControlJointStateBroadcasterAPI` is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
+The normative OpenUSD schema definition for `RosControlJointStateBroadcasterAPI` is provided in `schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.

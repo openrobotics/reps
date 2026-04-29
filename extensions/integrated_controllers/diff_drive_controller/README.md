@@ -23,4 +23,4 @@ Implementation should follow logic similar to the `diff_drive_controller` in `ro
 ## Tools
 
 ### Schema Definition
-The normative OpenUSD schema definition for `RosControlDiffDriveAPI` is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
+The normative OpenUSD schema definition for `RosControlDiffDriveAPI` is provided in `schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
