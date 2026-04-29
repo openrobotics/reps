@@ -410,13 +410,13 @@ A canonical repository of open-source, compliant simulation assets is to be esta
 
 ## Rationale
 
-- **Why OpenUSD?** This REP does not argue against any other formats. OpenUSD is useful for robotics due to:
+- **Why OpenUSD?:** This REP does not argue against any other formats. OpenUSD is useful for robotics due to:
     - Volume and quality of assets authored and a value such assets have for building robotic simulations.
     - Adoption and existing drive for the standard towards robotics.
     - Connection to a broad ecosystem and tooling.
-- **Extensions** A version of this REP with sensor and control schemas was considered, but the scale of dealing with all of these at once speaks against such an approach. Thus, the REP takes on a core + extensions model, following OpenUSD and glTF 2.0 practice.
-- **Scope limit** This REP does not regulate how simulation-level interfaces (such as `/clock` topic) are to be implemented, only that they are not a part of compliant assets. This scope limit is important so that diverse implementations of ROS communication in simulators can be supported.
-- **glTF** glTF 2.0 was selected as primary export pathway due to support in multiple ROS simulators, its complementary lightweight nature, and an ongoing development of the format in direction of robotics simulation.
+- **Extensions:** A version of this REP with sensor and control schemas was considered, but the scale of dealing with all of these at once speaks against such an approach. Thus, the REP takes on a core + extensions model, following OpenUSD and glTF 2.0 practice.
+- **Scope limit:** This REP does not regulate how simulation-level interfaces (such as `/clock` topic) are to be implemented, only that they are not a part of compliant assets. This scope limit is important so that diverse implementations of ROS communication in simulators can be supported.
+- **glTF:** glTF 2.0 was selected as primary export pathway due to support in multiple ROS simulators, its complementary lightweight nature, and an ongoing development of the format in direction of robotics simulation.
 
 ## How to Teach This
 
