@@ -11,7 +11,7 @@
 over "GLOBAL" (
     customData = {
         string libraryName       = "usdRosControlRigidBodyTwist"
-        string libraryPath       = "usdRosControlRigidBodyTwist"
+        string libraryPath       = "."
         string libraryPrefix     = "Usd"
         dictionary libraryTokens = {
         }

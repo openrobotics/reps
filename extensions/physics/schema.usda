@@ -11,7 +11,7 @@
 over "GLOBAL" (
     customData = {
         string libraryName       = "usdExtendedPhysics"
-        string libraryPath       = "usdExtendedPhysics"
+        string libraryPath       = "."
     }
 )
 {

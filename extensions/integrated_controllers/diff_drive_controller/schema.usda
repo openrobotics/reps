@@ -11,7 +11,7 @@
 over "GLOBAL" (
     customData = {
         string libraryName       = "usdRosControlDiffDrive"
-        string libraryPath       = "usdRosControlDiffDrive"
+        string libraryPath       = "."
         string libraryPrefix     = "Usd"
         dictionary libraryTokens = {
         }
