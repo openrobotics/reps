@@ -134,7 +134,7 @@ OpenUSD's native instancing mechanisms are designed for repetitive visual and st
     * *Kinematic Bodies:* Moving bodies that are animated but not dynamically driven by physics should set the physics:kinematicEnabled attribute to true.
     * *Dummy Frames:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `RosFrameAPI` as defined in Section 2.8.
 *   **Inertia Representation:** Unlike URDF and SDFormat's 6-value symmetric matrix, OpenUSD requires an eigendecomposed inertia tensor. Converters must mathematically decompose the source matrix into physics:diagonalInertia (eigenvalues) and physics:principalAxes (quaternion). This native decomposed form is the strict single source of truth; custom 6-value array attributes must not be authored or parsed.
-*   **Extended Physics:** Many physics features are missing in `USDPhysics`, including mimic joints, deformable bodies and advanced friction. Authors must use `ExtendedPhysics*` schemas for interoperability, following Section 4.2.2. When interoperable schema is not available, assets must isolate specific feature, e.g. deformable soft-body physics into a feature layer for specific domain or vendor (see Section 1.2.1). 
+*   **Extended Physics:** Many physics features are missing in `UsdPhysics`, including mimic joints, deformable bodies and advanced friction. Authors must use `ExtendedPhysics*` schemas for interoperability, following Section 4.2.2. When interoperable schema is not available, assets must isolate specific feature, e.g. deformable soft-body physics into a feature layer for specific domain or vendor (see Section 1.2.1). 
 
 
 #### 1.3.1 Collisions
@@ -360,7 +360,7 @@ OpenUSD and robotics XML formats (URDF, SDF, MJCF) are fundamentally mismatched 
 A canonical repository for core schema, extension schemas and compliance tooling is `ros-simulation/openusd-schemas`. 
 
 ### 4.1 Core ROS Schema Definition
-The normative OpenUSD schema definition for all `Ros*API` schemas is provided in `schema/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
+The normative OpenUSD schema definition for all `Ros*API` schemas is provided in `core/ros/schema.usda`. It can be used with `usdGenSchema` to produce either a codeless plugin (schema awareness and fallback values only) or full C++ and Python bindings for simulator integration.
 
 
 ### 4.2 Schema Registry
@@ -414,7 +414,7 @@ A REP-XXXX compliance checker is to be developed and shared with the community. 
 
 ### Supplementary migration tools
 
-A compliance fixer (e.g., `rep_sanitizer`) will be provider for common issues that can be handled by automated scripting, including:
+A compliance fixer (e.g., `rep_sanitizer`) will be provided for common issues that can be handled by automated scripting, including:
 
 *   **Schema Translation:** Stripping proprietary staging schemas and replacing them with their neutral `ExtendedPhysics` equivalents (see Section 4.2.2).
 *   **Transform Standardization:** Automatically decomposing baked 4x4 CAD matrices (`xformOp:transform`) into the mandated `translate` and `orient` operations (Section 1.1).
