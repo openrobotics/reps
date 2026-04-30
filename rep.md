@@ -10,7 +10,6 @@ tag: Draft
 category: Standard
 date: 2026-03-03
 requires: REP 103, REP 105
-pin: true
 ---
 
 ## Abstract
