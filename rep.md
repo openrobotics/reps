@@ -346,9 +346,9 @@ Lighting must be authored using core UsdLux schemas. To ensure deterministic ill
 
 ### 3.7 Variant Baking for Export
 While OpenUSD natively handles structural variants, many of the simulation tools and formats in the ecosystem don't, including URDF, SDF and glTF 2.0. Due to the burden of implementation, this REP proposes both a baseline and an advanced compliance:
-*    **Baseline compliance:** Converters must export only the active or default variant, destructively discarding all others. This resolved state must be baked by flattening OpenUSD composition arcs into a static, logically nested kinematic tree. Never flatten into world-space, as this permanently destroys local joint transforms and ROS TF trees.
+*    **Baseline compliance:** Converters must export only the resolved variant: an explicit selection if provided, otherwise the default authored per Section 1.2.4, destructively discarding all others. This resolved state must be baked by flattening OpenUSD composition arcs into a static, logically nested kinematic tree. Never flatten into world-space, as this permanently destroys local joint transforms and ROS TF trees.
 *    **Advanced compliance (material variants support):** Capable exporters may preserve material variations via the `KHR_materials_variants` extension. Because OpenUSD can arbitrarily override granular shader parameters, tools must evaluate each variant state, bake them into distinct glTF Material IDs in memory, and author the swap mapping.
-*    **Fallback:** The glTF extension is invalid if a variant alters underlying mesh topology. If geometry changes, or if the exporter lacks discrete state-evaluation logic, tools must safely fall back to Baseline Compliance.
+*    **Fallback:** The glTF extension is invalid if a variant alters underlying mesh topology or applied schemas. If geometry or structure changes, or if the exporter lacks discrete state-evaluation logic, tools must safely fall back to Baseline Compliance.
 
 ### 3.8 Lossy Conversion
 
