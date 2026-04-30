@@ -29,11 +29,11 @@ To achieve this, the specification addresses four key areas:
 
 Following the OpenUSD and glTF 2.0 model, this REP establishes a Core Standard, and proposes general rules for handling of extension schemas, including for control interfaces and sensor simulation.
 
-## Motivation 
+## Motivation
 
 The ROS ecosystem chiefly relies on URDF and SDF for describing robots and environments. These formats are almost entirely confined to the ROS and Gazebo ecosystems. OpenUSD has emerged as an industry standard supported by a multitude of tools and allows artists to collaborate with simulation engineers without problematic conversions between a variety of 3D and XML formats. Ensuring OpenUSD works well with ROS integrations across robotics simulators will increase ecosystem interoperability and strengthen ROS's position in physical AI workflows such as synthetic data and generative pipelines. OpenUSD is a powerful format with an extensible architecture allowing it to capture all the semantics of other popular formats.
 
-While OpenUSD adoption is growing quickly, only the core standard specification has been ratified so far, leaving most of what's interesting for robotics uncovered. OpenUSD lacks standardized semantic representations for ROS interfaces and standard rules for mapping to ROS concepts such as frames and TF trees. OpenUSD's flexibility also permits practices that degrade interoperability, such as proprietary extensions, defining execution instead of intent, and overfitting to particular workflows.
+While OpenUSD adoption is growing quickly, only the core standard specification has been ratified so far, leaving many key features for robotics uncovered. OpenUSD lacks standardized semantic representations for ROS interfaces and standard rules for mapping to ROS concepts such as frames and TF trees. OpenUSD's flexibility also permits practices that degrade interoperability, such as proprietary extensions, defining execution instead of intent, and overfitting to particular workflows.
 
 OpenUSD is championed by the Alliance for OpenUSD (AOUSD) and the ASWF USD Working Group. NVIDIA also plays a key role both as a founding member of AOUSD and in developing OpenUSD for robotics through Omniverse, Isaac Sim and Newton. This REP builds on top of significant work done by all these entities, extending it by addressing what is not yet standardized but urgently needed for OpenUSD interoperability in the ROS simulation ecosystem, and standardizing against practices that result in a vendor lock-in. As such, this REP is designed to adapt upstream standards for the ROS community, while serving as a reference to influence future decisions by AOUSD and ASWF.
 
@@ -138,7 +138,7 @@ OpenUSD's native instancing mechanisms are designed for repetitive visual and st
     * *Kinematic Bodies:* Moving bodies that are animated but not dynamically driven by physics should set the physics:kinematicEnabled attribute to true.
     * *Dummy Frames:* Non-physical dummy frames (e.g., `camera_optical_frame`) must not possess a `PhysicsRigidBodyAPI`. They should be tracked using the `RosFrameAPI` as defined in Section 2.7.
 *   **Inertia Representation:** Unlike URDF and SDFormat's 6-value symmetric matrix, OpenUSD requires an eigendecomposed inertia tensor. Converters must mathematically decompose the source matrix into physics:diagonalInertia (eigenvalues) and physics:principalAxes (quaternion). This native decomposed form is the strict single source of truth; custom 6-value array attributes must not be authored or parsed.
-*   **Extended Physics:** Many physics features are missing in `UsdPhysics`, including mimic joints, deformable bodies and advanced friction. Authors must use `ExtendedPhysics*` schemas for interoperability, following Section 4.2.2. When interoperable schema is not available, assets must isolate specific feature, e.g. deformable soft-body physics into a feature layer for specific domain or vendor (see Section 1.2.1). 
+*   **Extended Physics:** Many physics features are missing in `UsdPhysics`, including mimic joints, deformable bodies and advanced friction. Authors must use `ExtendedPhysics*` schemas for interoperability, following Section 4.2.2. When interoperable schema is not available, assets must isolate the specific feature, e.g. deformable soft-body physics into a feature layer for specific domain or vendor (see Section 1.2.1). 
 
 
 #### 1.3.1 Collisions
@@ -300,12 +300,10 @@ Simulator-level interfaces are prohibited in assets to avoid clashes, including:
 *   `/clock` topic (`rosgraph_msgs/msg/Clock` interface) for simulation time.
 *   Any interfaces included in the `simulation_interfaces` package (e.g. spawning, simulation control).
 
-### 2.10 Custom names to ROS joints.
+### 2.10 Custom ROS joint names.
 
 A number of concepts in ROS (e.g. robot descriptions, controllers) rely on joints names. 
-To ensure that joints are correctly identified and mapped to said concepts, the custom property `ros:joint:name` must be applied to all Prims bearing built-in `UsdPhysicsJoint` schema. 
-This string value is source of joint name for all ROS communications (e.g., `FollowJointTrajectory` action goals, `JointState` messages), intergration with ROS tools (e.g., `ros2_control`), and mapping to other formats (e.g., MJCF's `<joint name="">`).
-If this property is missing, simulators must fall back to using the prim name.
+To ensure that joints are correctly identified and mapped to said concepts, the custom property `ros:joint:name` may be applied to all Prims bearing built-in `UsdPhysicsJoint` schema. If this property is authored, its value is the single source of truth for ROS-facing joint identity, including mapping for `FollowJointTrajectory` action goals, `JointState` messages, integration with `ros2_control`, and for conversion to other formats (e.g., MJCF's `<joint name="">`). Authors should keep the property value and the prim name aligned where naming rules permit. If this property is missing, simulators must fall back to using the prim name.
 
 ## 3. Export and Conversion
 
@@ -389,6 +387,7 @@ To leverage emerging simulation features without violating vendor-neutrality (Se
 *   **Namespace:** To prevent collisions with core OpenUSD updates, incubating physics schemas must use the `ExtendedPhysics` class prefix and the `ext_physics:` property prefix, followed by a concept-specific sub-namespace (e.g. `ext_physics::mimic`). Vendor prefixes (e.g., `newton:`) and core prefixes (e.g., `physics:`) are prohibited.
 *   **Translation:** OpenUSD does not natively support schema aliasing. Assets generated by tools using vendor-specific staging schemas must be processed via ecosystem tooling (e.g., automated compliance fixers) to replace them with their `ExtendedPhysics*` equivalents prior to distribution.
 
+**Schema Lifecycle:** Physics extensions progress through three namespaces: vendor prefixes (e.g., `newton:`) during in-tool development, the neutral `ext_physics:` prefix for cross-engine incubation in the schema registry, and `physics:` once AOUSD ratifies the schema into core OpenUSD. The `rep_sanitizer` tool handles the first transition; the deprecation policy in Section 4.2.1 handles the second. Vendor prefixes are prohibited in distributed assets because they encode engine identity into properties that should be engine-neutral; the `physics:` prefix is reserved for AOUSD-ratified schemas. `ext_physics:` exists to fill the gap between the two.
 
 #### 4.2.3 Control Schemas
 
@@ -417,6 +416,7 @@ A canonical repository of open-source, compliant simulation assets is to be esta
 - **Extensions:** A version of this REP with sensor and control schemas was considered, but the scale of dealing with all of these at once speaks against such an approach. Thus, the REP takes on a core + extensions model, following OpenUSD and glTF 2.0 practice.
 - **Scope limit:** This REP does not regulate how simulation-level interfaces (such as `/clock` topic) are to be implemented, only that they are not a part of compliant assets. This scope limit is important so that diverse implementations of ROS communication in simulators can be supported.
 - **glTF:** glTF 2.0 was selected as primary export pathway due to support in multiple ROS simulators, its complementary lightweight nature, and an ongoing development of the format in direction of robotics simulation.
+- **Upstream dependency:** This REP intentionally tracks active work at AOUSD, including the Separation of Concerns proposal for asset identifiers (Section 1.2.5), incubating physics schemas (Section 4.2.2), and forthcoming output from the physics and robotics Working Groups. As these are ratified, this REP will adopt the official mechanisms and deprecate its provisional equivalents. This imposes a maintenance burden on REP and schema-registry maintainers and a migration burden on simulator vendors and asset authors, but is the correct trade-off: the alternative is a ROS-specific dialect of OpenUSD that forfeits the ecosystem advantages motivating its adoption in the first place.
 
 ## How to Teach This
 
@@ -425,6 +425,11 @@ The standard introduced by this REP is a subject of automation through complianc
 ### Documentation Updates
 
 -  **ROS Tutorials->Simulators:** add a new chapter on interoperable assets and cross-reference the compliant asset repository.
+
+### Other Resources
+
+-  **Reference assets:** the canonical asset repository (Section 4.3) serves as worked examples; each asset is documented with the layer structure, applied schemas and compliance notes, making it easy to replicate.
+-  **Compliance checker:** the compliance checker will output exact violations with references to the corresponding REP sections, making it easy to adjust assets step-by-step and learn the standard in the process.
 
 ## Implementation
 
