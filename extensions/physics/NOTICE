@@ -1,7 +1,0 @@
-Multiple schemas in schema.usda were adapted from Newton: https://github.com/newton-physics/newton-usd-schemas
-
-Changes include:
-- Selection of schemas (omitting solver-specific, global parameters, and control-related).
-- Renaming Newton to ExtendedPhysics, newton: to ext_physics:
-- Adding sub-namespaces within (e.g. ext_physics:mimic)
-- Adjusting some comments.
