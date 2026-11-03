@@ -914,9 +914,9 @@ at[^20]. To specify the schema within a manifest you can reference a
 self contained schema file like this:
 
 > \<?xml version=\"1.0\"?\> \<?xml-model
-> href=\"http://download.ros.org/schema/package_format3.xsd\"
+> href=\"http://download.ros.org/schema/package_format4.xsd\"
 > schematypens=\"http://www.w3.org/2001/XMLSchema\"?\> \<package
-> format=\"3\"\>
+> format=\"4\"\>
 
 ## References
 
@@ -990,6 +990,6 @@ version where one is empty and the other declares a dependency.
 [^19]: REP-0140 (<https://ros.org/reps/rep-0140.html>)
 
 [^20]: Schema file
-    (<https://github.com/ros-infrastructure/rep/blob/master/xsd/package_format3.xsd>)
+    ([package_format4.xsd](/assets/reps/rep-NNNN/package_format4.xsd))
 
 [^21]: REP-0149 (<https://ros.org/reps/rep-0149.html>)
