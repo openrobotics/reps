@@ -1,10 +1,18 @@
 ---
-REP: 149
-title: Package Manifest Format Three Specification
-author: Dirk Thomas
-tag: Final
-category: Standards Track
-date: '2017-10-11'
+layout: post
+REP: NNNN:2026
+title: Package Manifest Format Four Specification
+author: Scott K Logan <logans@cottsay.net>, Dirk Thomas
+PMC Sponsor: Scott K Logan <logans@cottsay.net>
+PMCs: ROS
+Discussion: Pending
+Status: Draft
+tag: Draft
+Type: Specification
+category: Specification
+Created: 2026-11-03
+date: 2026-11-03
+Supersedes: 149
 ---
 
 ## Outline
