@@ -18,20 +18,18 @@ date: '2017-10-11'
 7.  [References](#references)
 8.  [Copyright](#copyright)
 
-Significant changes compared to REP-0140 [2]_ are highlighted in <font color="red">red</font>.
+Significant changes compared to REP-0149 are highlighted in <font color="red">red</font>.
 Trivial changes appear in <font color="blue">blue</font>.
 
 ## Abstract
 
-This REP specifies the third `package.xml` format, which is an update to
-the previous versions specified in REP-0127[^1] and REP-0140[^2].
-{: style="color:blue"}
+This REP specifies the fourth `package.xml` format, which is an update to
+the previous versions specified in REP-0127[^1], REP-0140[^2], and REP-0149[^21].
 
 ## Motivation
 
 This REP covers three separate topics which are described in the
 following subsections.
-{: style="color:red"}
 
 ### Dependency groups
 
@@ -41,13 +39,11 @@ _rmw_implementation_ in ROS 2. They explicitly list the
 dependencies which are being used during the release process. But when
 building from source they need to be updated to add custom message
 generators or rmw implementations.
-{: style="color:red"}
 
 The goal is to allow specifying this kind of group dependency in a way
 that a from-source build can process the custom packages accordingly to
 make them available to the package even though the package doesn\'t list
 an explicit dependency on the custom package.
-{: style="color:red"}
 
 ### ABI version on the package level
 
@@ -60,12 +56,10 @@ that overhead changes which should be released rather sooner than later,
 e.g. a documentation fix or simple bugfix in a _.cpp_ file,
 are being held back to group them with other changes to make the rebuild
 effort worthwhile.
-{: style="color:red"}
 
 In order to allow package releases without enforcing a rebuild of all
 downstream packages a package should be able to declare if such a
 rebuild is necessary or not.
-{: style="color:red"}
 
 ### Packages across ROS 1 and ROS 2
 
@@ -74,43 +68,35 @@ source the dependencies listed in the package manifest are a problem.
 E.g. in ROS 1 a package needs to depend on _roscpp_ where as
 in ROS 2 it needs to depend on _rclcpp_. This amends the
 manifest to support this use case.
-{: style="color:red"}
 
 The necessary part outside of the manifest to make a package compatible
 with ROS 1 as well as ROS 2 is explicitly not part of this document. In
 general it is possible to conditionally handle those cases in
 programming languages like CMake, C++, Python, etc.
-{: style="color:red"}
 
 See [Alternatives for Universal
 Packages](#alternatives-for-universal-packages) for options not chosen.
-{: style="color:red"}
 
 ## Rationale
 
 REP-0127[^3] and REP-0140[^4] provide the `package.xml` design rationale
 for format one and two, which is not repeated here.
-{: style="color:blue"}
 
 ### Group dependencies
-<!-- <font color="red"> -->
 
 Packages can already express direct dependencies on other individual
 packages, but this is not sufficient for cases where a package needs to
 be built after all instances of a particular kind of package. Instead
 packages need to be able to declare a dependency on packages without
 using their name directly.
-{: style="color:red"}
 
 One alternative is to \"reverse\" the dependency declaration so that a
 package states that it \"wants\" to be a dependency of another package.
 But that approach does not work in the case where the other package gets
 forked under a different name since the \"reverse\" dependency would
 still only reference the original package name.
-{: style="color:red"}
 
 Therefore the dependency declaration is being decoupled into two parts:
-{: style="color:red"}
 
 > - *(A)* packages declaring a dependency on a \"group dependency
 >   name\", e.g. _ros1_bridge_ can depend on the group
@@ -118,37 +104,31 @@ Therefore the dependency declaration is being decoupled into two parts:
 > - *(B)* packages declaring to be part of a group dependency identified
 >   by its name, e.g. _sensor_msgs_ can declare itself part
 >   of the \"message_packages\" group
-{: style="color:red"}
 
 During a from-source build the build tool can use the information from
 all package manifests in the workspace to identify group dependencies.
 It can use this information to process group members before the packages
 declaring the group dependency as if the dependency was declared
 explicitly using the existing _depend_ tags.
-{: style="color:red"}
 
 The group dependency (A) is declared with a [group_depend](#group_depend-multiple)
 tag. The content of the group dependency tag is the name of the group.
 Leading and trailing whitespace is being ignored from the name and for
 consistency it is required to follow the naming rules for packages.
-{: style="color:red"}
 
 The membership of a group (B) is declared with a
 [member_of_group](#member_of_group-multiple) tag.
-{: style="color:red"}
 
 ### ABI version attribute
 
 The early draft of REP 127 (\"package.xml format 1\") proposed an
 attribute (_abi_version_) to identify the package version
 which is considered \"compatible\".
-{: style="color:red"}
 
 Since at the time no consensus could be reached about specifying ABI
 compatibility in general (for packages as well as libraries) the
 proposed attribute was removed from the draft (see related
 discussions[^5],[^6], [^7]).
-{: style="color:red"}
 
 Since then the number of packages in a ROS distributions has increased
 (e.g. Indigo has more than 2500 packages) as well as the number of
@@ -156,7 +136,6 @@ platforms ROS provides binary packages for. Therefore the need to avoid
 unnecessary rebuilds has increased. It is also desired to be able to
 encourage more frequent releases if they don\'t require downstream
 packages to be rebuilt.
-{: style="color:red"}
 
 ### Packages across ROS 1 and ROS 2
 
@@ -165,29 +144,24 @@ source the manifest must describe the package\'s requirements for both
 cases. This means describing different dependencies
 (_rclcpp_ vs _roscpp_), and possibly a different
 build type (_catkin_ vs _ament_cmake_).
-{: style="color:red"}
 
 The `condition` attribute as defined for [\<build_depend\>
 (multiple)](#build_depend-multiple) is intended to satisfy this use case.
 A package may define one manifest where all tags supporting the _condition_
 attribute are conditioned on the environment variable _ROS_VERSION_. The
 value is a string with an integer: **1** or **2**.
-{: style="color:red"}
 
 Various tools will need to be aware of the condition responsible for
 choosing which dependencies should be used:
-{: style="color:red"}
 
 > - _bloom_
 > - _rosdep_
 > - _rosinstall_generator_
 > - the build tool
-{: style="color:red"}
 
 A new field must be added to the distribution file specified in REP 143
 [^8] so that a ROS distribution \"knows\" which ROS version it
 represents.
-{: style="color:red"}
 
 The build tool does not have access to the ROS distribution metadata. It
 could either use information provided by an environment variable or fall
@@ -195,7 +169,6 @@ back to consider *all* dependencies (independent of their annotation)
 and work on the assumption that the workspace contains a set of
 consistent packages and additional dependencies from other ROS versions
 are not available in the workspace.
-{: style="color:red"}
 
 ## Data Representation
 
@@ -210,7 +183,6 @@ element.
 
 The `<package>` tag is the unique top-level tag in a `package.xml` file.
 All other tags are nested under it.
-{: style="color:blue"}
 
 #### Attributes
 
@@ -277,7 +249,6 @@ indirectly depend on itself.
 >
 > The dependency graph must be acyclic even when considering group
 > dependencies.
-{: style="color:red"}
 
 #### Various
 
@@ -370,7 +341,6 @@ where each part is numeric only.
 > limited to ABI compatibility. Changes in other parts of a package
 > (CMake, Python, etc.) could also require downstream packages to be
 > rebuilt and therefore not qualify as \"compatible\".
-{: style="color:red"}
 
 ### \<description\>
 
@@ -437,8 +407,6 @@ Commonly used license strings:
 >
 > > \"You must give any other recipients of the Work or Derivative Works
 > > a copy of this License\"
-> {: style="color:blue"}
-{: style="color:blue"}
 
 ### \<url\> (multiple)
 
@@ -511,17 +479,14 @@ order of multiple packages.
 > the stated version number.
 >
 > `condition="CONDITION_EXPRESSION"`
-> {: style="--highlighter-rouge-color:red;"}
 >
 > Every dependency can be conditional on a condition expression. If the
 > condition expression evaluate to \"true\" the dependency is being used
 > and considered as if it doesn\'t have a condition attribute. If the
 > condition expression evaluate to \"false\" the dependency is being
 > ignored and considered as if it doesn\'t exist.
-> {: style="color:red"}
 >
 > The condition expression can consist of:
-> {: style="color:red"}
 >
 > > - parenthesis (which must be balanced)
 > > - logical operators _and_ and _or_
@@ -533,11 +498,9 @@ order of multiple packages.
 > > - quoted literals (single or double quotes) which can contain any
 > >   characters except the used quote character
 > > - arbitrary whitespaces between these tokens
-> {: style="color:red"}
 >
 > An expression syntactically correct by the previous definition will be
 > evaluated as follows:
-> {: style="color:red"}
 >
 > > - All variables are substituted by their values and treated as
 > >   strings.
@@ -546,20 +509,16 @@ order of multiple packages.
 > >   would evaluate it. Please note that the comparison operators only
 > >   do a *string* comparison and don\'t attempt to interpret the
 > >   string as a numerical value.
-> {: style="color:red"}
 >
 > Tools may populate the values for the variables starting with a
 > _\$_ sign in different ways, but typically they are
 > evaluated as environment variables.
-> {: style="color:red"}
 >
 > As an example, a dependency might only be needed in a ROS 1
 > environment. Such dependency could be described as follows where the
 > value of _\$ROS_VERSION_ is coming from an environment variable:
-> {: style="color:red"}
 >
 > `<depend condition="$ROS_VERSION == 1">roscpp</depend>`
-> {: style="--highlighter-rouge-color:red;"}
 
 #### \<build_export_depend\> (multiple)
 
@@ -697,35 +656,26 @@ creating Debian packages and `Obsoletes` for RPM packages.
 > The same attributes as for [\<build_depend\> (multiple)](#build_depend-multiple).
 
 ### Group dependency tags
-{: style="color:red"}
 
 #### \<group_depend\> (multiple)
-{: style="color:red"}
 
 The content is the name of a dependency group on which the package
 depends. The group name should follow the same rules as the
 [\<name\>](#name) tag.
-{: style="color:red"}
 
 ##### Attributes
-{: style="color:red"}
 
 > The _condition_ attribute as defined for [\<build_depend\> (multiple)](#build_depend-multiple).
-{: style="color:red"}
 
 #### \<member_of_group\> (multiple)
-{: style="color:red"}
 
 The content is the name of a dependency group of which the package is a
 member.
-{: style="color:red"}
 
 ##### Attributes
-{: style="color:red"}
 
 > The _condition_ attribute as defined for
 > [\<build_depend\> (multiple)](#build_depend-multiple).
-{: style="color:red"}
 
 ### \<export\>
 
@@ -788,10 +738,8 @@ Further build types may eventually be defined, such as: \"make\",
 \"autotools\", \"rosbuild\", or \"custom\".
 
 ##### Attributes
-{: style="color:red"}
 
 > The _condition_ attribute as defined for [\<build_depend\> (multiple)](#build_depend-multiple).
-{: style="color:red"}
 
 #### \<deprecated\>
 
@@ -876,7 +824,6 @@ necessary environment should be a dependency of almost all ROS 2
 packages to ensure that the information is available even when only some
 packages are installed. The package _rcl_ seems to be a good
 place for this.
-{: style="color:red"}
 
 Additionally for the condition expressions to allow distinguishing ROS 1
 and ROS 2 an environment variable identifying the major version is
@@ -884,7 +831,6 @@ necessary. Therefore the environment variable _ROS_VERSION_
 is used with the value being either _1_ or _2_.
 This new environment variable can be defined beside the
 _ROS_DISTRO_ one.
-{: style="color:red"}
 
 An additional environment variable _ROS_PYTHON_VERSION_ to
 choose the Python version in use (either _2_ or
@@ -892,16 +838,13 @@ _3_) is also provided. In ROS 1, this allows users to test
 out packages on Python 3 before the distribution is officially switched
 to Python 3. ROS 2 only supports Python 3, so changing this environment
 variable there will cause tools like rosdep to stop working.
-{: style="color:red"}
 
 Once a specific ROS environment has been sourced all tools can determine
 the ROS major version as well as the distribution name and therefore
 evaluate conditions which use those to limit the scope of dependencies.
-{: style="color:red"}
 
 If no environment has been sourced some tools might require that the
 necessary information is being specified explicitly when being invoked.
-{: style="color:red"}
 
 #### New ROS package
 
@@ -911,13 +854,11 @@ variables like _ROS_PACKAGE_PATH_. In ROS 2 the environment
 variable _ROS_DISTRO_ doesn\'t exist at the moment. Also
 neither ROS version has an environment variable
 _ROS_VERSION_ at the moment.
-{: style="color:red"}
 
 A new ROS package named _ros_environment_ which has minimal
 dependencies will be available in both ROS versions and providing the
 new environment variables as well as some of the existing environment
 variables.
-{: style="color:red"}
 
 ## Compatibility
 
@@ -928,12 +869,10 @@ honor the new information provided by format three. If they are not
 checking that the format is two or lower they will simply ignore the
 format three specific information when processing a package with a
 format three manifest.
-{: style="color:red"}
 
 In order to enable packages to declare different dependencies for ROS 1
 and ROS 2 in a single manifest the tools in ROS 1
 (_catkin_pkg_, _rosdep_, _bloom_, etc.) should be updated to support format 3.
-{: style="color:red"}
 
 #### catkin_prepare_release
 
@@ -942,7 +881,6 @@ version the tools doesn\'t need to change. For packages which do specify
 a _compatibility_ version the tool should probably by
 default remove the attribute and only after confirmation from the user
 offer to keep it.
-{: style="color:red"}
 
 #### ros_buildfarm
 
@@ -951,31 +889,26 @@ downstream jobs in Jenkins. In order to consider the
 _compatibility_ attribute the downstream job dependencies
 must be changed to be conditional which are only triggered when the new
 package version is not compatible to the previous version.
-{: style="color:red"}
 
 ### Backward compatibility
 
 Format one or two packages following REP-0127[^18] or REP-0140[^19] are
 not affected unless they are updated to declare `<package format="3">`.
-{: style="color:red"}
 
 Since format three only adds new functionality and doesn\'t modify any
 existing markup a migration to format three only makes sense when the
 package wants to use any of the new features.
-{: style="color:red"}
 
 ## Schema
 
 A schema defining the structure specified in this document is available
 at[^20]. To specify the schema within a manifest you can reference a
 self contained schema file like this:
-{: style="color:blue"}
 
 > \<?xml version=\"1.0\"?\> \<?xml-model
 > href=\"http://download.ros.org/schema/package_format3.xsd\"
 > schematypens=\"http://www.w3.org/2001/XMLSchema\"?\> \<package
 > format=\"3\"\>
-{: style="color:blue"}
 
 ## References
 
@@ -992,14 +925,12 @@ version. For example, a package that depends on _roscpp_ in ROS 1 and
 _rclcpp_ in ROS 2 would depend on _roscpp_. ROS 2 would have a dummy
 packcage called _roscpp_ that depended on _rclcpp_. That would allow all
 downstream packages to use a single name as their dependency.
-{: style="color:red"}
 
 This option was not chosen because it would be burdensome to create
 dummy packages for every naming difference between ROS 1 and ROS 2. It
 is even more cumbersome if a package needs to declare a dependency only
 in one of the ROS versions. There would be a dummy package in both ROS
 version where one is empty and the other declares a dependency.
-{: style="color:red"}
 
 [^1]: REP-0127 (<https://ros.org/reps/rep-0127.html>)
 
@@ -1052,3 +983,5 @@ version where one is empty and the other declares a dependency.
 
 [^20]: Schema file
     (<https://github.com/ros-infrastructure/rep/blob/master/xsd/package_format3.xsd>)
+
+[^21]: REP-0149 (<https://ros.org/reps/rep-0149.html>)
